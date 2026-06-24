@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.local
+.env.*.local
+client/.env.development
+
+# Build output
+dist/
+client/dist/
+server/dist/
+shared/dist/
+*.tsbuildinfo
+
+# SQLite data
+data/
+*.db
+*.db-shm
+*.db-wal
+
+# Logs & diagnostics
+*.log
+npm-debug.log*
+*.report.html
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Test / coverage
+coverage/
+
+# Vercel
+.vercel
+
+# Agent / dev scratch (do not ship)
+task.md
+**/implementation_plan.md
+command_run_results_and_history/
+dump_dom_structure.js
+.antigravityignore

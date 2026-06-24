@@ -1,0 +1,27 @@
+{
+  "name": "decodoc",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "DecoDoc — structured research paper analysis.",
+  "workspaces": [
+    "client",
+    "server",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "npm run build -w shared && npm run build -w server && npm run build -w client",
+    "vercel-build": "npm run build -w shared && npm run build -w client",
+    "test": "npm run test -w shared && npm run test -w server && npm run test -w client",
+    "lint": "eslint \"client/src/**/*.{ts,tsx}\" \"server/src/**/*.ts\"",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md,css}\""
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.21.0",
+    "eslint": "^9.21.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.26.0"
+  }
+}

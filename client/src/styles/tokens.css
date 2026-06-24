@@ -1,0 +1,68 @@
+@layer base {
+  :root {
+    /* Brand colors */
+    --color-blush-paper: #f7f3f1;
+    --color-carbon-ink: #0a0a0a;
+    --color-bone-white: #ffffff;
+    --color-fossil-gray: #6b6f76;
+    --color-signal-blue: #2563eb;
+    --color-pumpkin-orange: #c24e00;
+
+    /* Surfaces */
+    --color-surface: rgba(255, 255, 255, 0.72);
+    --color-surface-solid: #ffffff;
+    --color-border: rgba(10, 10, 10, 0.08);
+    --color-border-strong: rgba(10, 10, 10, 0.14);
+
+    /* Typography */
+    --font-copernicus: "Lora", "Playfair Display", Georgia, serif;
+    --font-helvetica: "Geist Variable", "Geist", system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+    --text-nano: 11px;
+    --leading-nano: 1.3;
+    --text-caption: 14px;
+    --leading-caption: 1.4;
+    --text-body: 16px;
+    --leading-body: 1.5;
+    --tracking-body: -0.01em;
+    --text-body-lg: 18px;
+    --leading-body-lg: 1.45;
+    --tracking-body-lg: -0.012em;
+    --text-subheading: 24px;
+    --leading-subheading: 1.2;
+    --tracking-subheading: -0.02em;
+    --text-heading: 36px;
+    --leading-heading: 1.1;
+    --tracking-heading: -0.03em;
+    --text-heading-lg: 44px;
+    --leading-heading-lg: 1.08;
+    --tracking-heading-lg: -0.035em;
+    --text-heading-xl: 52px;
+    --leading-heading-xl: 1.06;
+    --tracking-heading-xl: -0.04em;
+    --text-display: 64px;
+    --leading-display: 1;
+    --tracking-display: -0.045em;
+
+    /* shadcn */
+    --background: oklch(0.98 0.005 60);
+    --foreground: oklch(0.145 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.145 0 0);
+    --primary: oklch(0.45 0.15 45);
+    --primary-foreground: oklch(0.985 0 0);
+    --secondary: oklch(0.97 0 0);
+    --muted: oklch(0.96 0.005 60);
+    --muted-foreground: oklch(0.5 0.01 260);
+    --accent: oklch(0.97 0 0);
+    --accent-foreground: oklch(0.205 0 0);
+    --destructive: oklch(0.577 0.245 27.325);
+    --border: oklch(0.92 0.005 60);
+    --input: oklch(0.92 0.005 60);
+    --ring: oklch(0.55 0.2 260);
+    --radius: 0.75rem;
+  }
+}
