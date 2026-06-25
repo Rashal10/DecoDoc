@@ -1,5 +1,3 @@
-import type { Paper } from "@decodoc/shared";
-
 export type UsageStatus = {
   authenticated: boolean;
   used: number;

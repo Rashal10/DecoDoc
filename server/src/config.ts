@@ -32,8 +32,6 @@ export const config = {
   allowVercelPreviews: process.env.ALLOW_VERCEL_PREVIEWS === "true",
   maxPdfBytes: 30 * 1024 * 1024,
   semanticScholarApiKey: process.env.SEMANTIC_SCHOLAR_API_KEY ?? "",
-  clerkSecretKey: process.env.CLERK_SECRET_KEY ?? "",
-  clerkPublishableKey: process.env.CLERK_PUBLISHABLE_KEY ?? "",
   authJwtSecret: process.env.AUTH_JWT_SECRET ?? "dev-only-change-me-in-production",
   googleClientId: process.env.GOOGLE_CLIENT_ID ?? "",
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",

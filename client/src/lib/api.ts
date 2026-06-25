@@ -111,8 +111,8 @@ async function request<T>(path: string, init?: RequestInit, options?: { useActiv
         ...init?.headers,
       },
     });
+    if (!res.ok) await parseErrorResponse(res);
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new ApiError(data.message ?? data.error ?? `Request failed: ${res.status}`, data);
     return data as T;
   } catch (error) {
     if (error instanceof ApiError) throw error;
