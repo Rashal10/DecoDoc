@@ -1,3 +1,4 @@
+# Local development only — API + Postgres. Run the frontend with `npm run dev`.
 services:
   postgres:
     image: postgres:16
@@ -26,16 +27,24 @@ services:
         condition: service_healthy
     environment:
       PORT: 8787
+      NODE_ENV: development
       DATABASE_URL: postgresql://decodoc:decodoc@postgres:5432/decodoc
       CLIENT_ORIGIN: http://localhost:5173
+      CLIENT_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
       LLM_PROVIDER: ${LLM_PROVIDER:-groq}
       GROQ_API_KEY: ${GROQ_API_KEY}
       LLM_MODEL: ${LLM_MODEL:-llama-3.3-70b-versatile}
+      LLM_MAX_TOKENS: ${LLM_MAX_TOKENS:-16384}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-meta-llama/llama-3.3-70b-instruct}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
       AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-dev-only-change-me-in-production}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       API_PUBLIC_URL: http://localhost:8787
       SEMANTIC_SCHOLAR_API_KEY: ${SEMANTIC_SCHOLAR_API_KEY:-}
+      ALLOW_VERCEL_PREVIEWS: "false"
 
 volumes:
   pgdata:

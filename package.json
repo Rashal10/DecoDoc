@@ -2,8 +2,12 @@
   "name": "decodoc",
   "version": "1.0.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "DecoDoc — structured research paper analysis.",
+  "engines": {
+    "node": ">=22"
+  },
   "workspaces": [
     "client",
     "server",
@@ -14,7 +18,7 @@
     "build": "npm run build -w shared && npm run build -w server && npm run build -w client",
     "vercel-build": "npm run build -w shared && npm run build -w client",
     "test": "npm run build -w shared && npm run test -w shared && npm run test -w server && npm run test -w client",
-    "lint": "eslint \"client/src/**/*.{ts,tsx}\" \"server/src/**/*.ts\"",
+    "lint": "eslint \"client/src/**/*.{ts,tsx}\" \"server/src/**/*.ts\" \"shared/src/**/*.ts\"",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md,css}\""
   },
   "devDependencies": {

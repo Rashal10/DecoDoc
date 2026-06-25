@@ -2,14 +2,19 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import multer from "multer";
+import rateLimit from "express-rate-limit";
 import { ZodError } from "zod";
 import { config, isAllowedOrigin, validateProductionConfig } from "./config";
 import { attachAuthContext, parseCookies } from "./auth";
 import { authRouter } from "./auth-routes";
-import { initDatabase } from "./init-db";
+import { initDatabase, closeDatabase } from "./init-db";
 import { router as apiRouter } from "./routes";
 
 const app = express();
+
+if (process.env.NODE_ENV === "production") {
+  app.set("trust proxy", 1);
+}
 
 app.use(helmet());
 app.use(cors({
@@ -22,7 +27,15 @@ app.use(express.json({ limit: "2mb" }));
 app.use(parseCookies);
 app.use(attachAuthContext);
 
-app.use("/api/auth", authRouter);
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "RATE_LIMIT", message: "Too many auth attempts. Try again later." },
+});
+
+app.use("/api/auth", authLimiter, authRouter);
 app.use("/api", apiRouter);
 
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
@@ -54,9 +67,20 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
 async function main() {
   validateProductionConfig();
   await initDatabase();
-  app.listen(config.port, "0.0.0.0", () => {
+  const server = app.listen(config.port, "0.0.0.0", () => {
     console.log(`[DecoDoc Server] Running on http://localhost:${config.port}`);
   });
+
+  const shutdown = async (signal: string) => {
+    console.log(`[DecoDoc Server] ${signal} received, shutting down…`);
+    server.close(async () => {
+      await closeDatabase();
+      process.exit(0);
+    });
+  };
+
+  process.on("SIGTERM", () => void shutdown("SIGTERM"));
+  process.on("SIGINT", () => void shutdown("SIGINT"));
 }
 
 main().catch((err) => {

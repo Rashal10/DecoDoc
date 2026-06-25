@@ -12,6 +12,8 @@ DecoDoc helps you read research papers faster. Paste an arXiv ID, DOI, abstract,
 
 ## Local setup
 
+Requires **Node.js 22+**.
+
 ```bash
 npm install
 cp .env.example .env
@@ -26,6 +28,7 @@ GEMINI_API_KEY=your_gemini_key_here   # embeddings
 LLM_PROVIDER=groq
 LLM_MODEL=llama-3.3-70b-versatile
 DATABASE_URL=postgresql://decodoc:decodoc@localhost:5432/decodoc
+AUTH_JWT_SECRET=change-this-to-a-long-random-string-in-production
 ```
 
 Start Postgres locally (Docker):
@@ -39,21 +42,36 @@ docker compose up postgres -d
 
 Never commit `.env` or real API keys.
 
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start API + frontend (Vite proxies `/api` to port 8787) |
+| `npm test` | Lint + unit tests (builds `shared` first) |
+| `npm run lint` | ESLint across client, server, and shared |
+| `npm run build` | Production build for all workspaces |
+| `npm run db:migrate -w server` | Apply Drizzle migrations manually |
+
 ## API overview
 
 | Endpoint | Auth | Description |
 |----------|------|-------------|
-| `POST /api/analyze` | Optional (quota) | Analyze arXiv, DOI, or abstract |
-| `POST /api/upload-pdf` | Optional (quota) | Analyze uploaded PDF (text extracted client-side) |
+| `POST /api/analyze` | Session (quota) | Analyze arXiv, DOI, or abstract |
+| `POST /api/upload-pdf` | Session (quota) | Analyze uploaded PDF (text extracted client-side) |
 | `GET /api/paper/:id` | — | Paper + cached analysis |
-| `GET /api/me/usage` | — | Quota status |
+| `GET /api/me/usage` | Session | Quota status (anonymous or signed-in) |
 | `GET /api/library/bookmarks` | Required | Saved papers |
+| `POST /api/auth/register` | — | Email/password sign-up |
+| `POST /api/auth/login` | — | Email/password sign-in |
+| `POST /api/auth/logout` | — | Clear auth cookie |
+| `GET /api/auth/me` | Cookie | Current user |
+| `GET /api/auth/google` | — | Start Google OAuth |
 
 Anonymous users get 3 free analyses; signed-in users get 10 per day.
 
 ## Deployment
 
-Split stack: **Vercel** (frontend) + **Render** or **Railway** (API + Postgres).
+Split stack: **Vercel** (frontend) + **Render** or **Railway** (API + Postgres). Do **not** expose `docker compose` directly to the public internet.
 
 ### Frontend (Vercel)
 
@@ -96,7 +114,9 @@ Migrations run automatically on server startup.
 - Frontend: open your Vercel URL
 - Backend: `GET https://your-api.onrender.com/api/health`
 
-## Docker (full stack)
+## Docker (API + Postgres only)
+
+Runs the API and database for local testing. The React app is **not** included — use `npm run dev` for the full UI.
 
 ```bash
 docker compose up --build
@@ -108,8 +128,15 @@ docker compose up --build
 npm test
 ```
 
+CI runs lint, test, and build on every push to `main`.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
+
 ## Notes
 
 - PDF text is extracted in the browser with PDF.js before upload.
 - Max upload size: 30 MB.
 - Analyses are cached in Postgres by paper ID.
+- Source of truth for the database schema: `server/drizzle/` (not `server/schema.sql`, which is reference-only).

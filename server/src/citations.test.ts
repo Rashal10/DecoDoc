@@ -114,5 +114,5 @@ describe("resolveCitationNetwork", () => {
     const graph = await resolveCitationNetwork(deepSeek);
     expect(graph.nodes.find((n) => n.type === "current")?.citationCount).toBe(228);
     expect(graph.nodes.some((n) => n.type === "citation" && n.title.includes("DeepSeek-R1"))).toBe(true);
-  });
+  }, 10_000);
 });

@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS users (
   auth_provider_id TEXT UNIQUE NOT NULL,
   email TEXT,
   display_name TEXT,
+  password_hash TEXT,
   created_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );
 

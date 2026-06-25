@@ -18,7 +18,7 @@ export const config = {
   databaseUrl:
     process.env.DATABASE_URL ?? "postgresql://decodoc:decodoc@localhost:5432/decodoc",
   geminiApiKey: process.env.GEMINI_API_KEY ?? "",
-  geminiModel: process.env.GEMINI_MODEL ?? "gemini-flash-latest",
+  geminiModel: process.env.GEMINI_MODEL ?? "gemini-2.0-flash",
   llmProvider: process.env.LLM_PROVIDER ?? "groq",
   groqApiKey: process.env.GROQ_API_KEY ?? "",
   groqBaseUrl: process.env.GROQ_BASE_URL ?? "https://api.groq.com/openai/v1",

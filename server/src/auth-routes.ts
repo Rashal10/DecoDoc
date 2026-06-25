@@ -117,7 +117,7 @@ authRouter.post("/login", async (req, res, next) => {
     if (!verifyPassword(password, user.passwordHash)) {
       return res.status(401).json({
         error: "INVALID_CREDENTIALS",
-        message: "Incorrect password. Try again or reset your password.",
+        message: "Incorrect password. Try again.",
       });
     }
 

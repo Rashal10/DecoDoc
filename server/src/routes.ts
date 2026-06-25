@@ -1,5 +1,6 @@
 import express from "express";
 import multer from "multer";
+import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import { nanoid } from "nanoid";
 import type { Analysis, Paper } from "@decodoc/shared";
@@ -39,6 +40,14 @@ import { checkAnalysisQuota, getUsageStatus } from "./quota";
 
 export const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: config.maxPdfBytes } });
+
+const searchLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "RATE_LIMIT", message: "Too many search requests. Try again in a minute." },
+});
 
 const analyzeSchema = z.object({
   inputType: z.enum(["arxiv", "doi", "abstract", "pdf"]),
@@ -142,7 +151,7 @@ router.get("/me/usage", async (req, res, next) => {
   }
 });
 
-router.get("/search", async (req, res, next) => {
+router.get("/search", searchLimiter, async (req, res, next) => {
   try {
     const q = z.string().trim().min(2).parse(req.query.q ?? "");
     const papers = await listEmbeddedPapers();

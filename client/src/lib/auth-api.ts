@@ -23,18 +23,8 @@ export class ApiError extends Error {
   }
 }
 
-let getAuthToken: (() => Promise<string | null>) | null = null;
-
-export function setAuthTokenGetter(getter: () => Promise<string | null>) {
-  getAuthToken = getter;
-}
-
 export async function authHeaders(contentType = true): Promise<Record<string, string>> {
   const headers: Record<string, string> = {};
   if (contentType) headers["Content-Type"] = "application/json";
-  if (getAuthToken) {
-    const token = await getAuthToken();
-    if (token) headers.Authorization = `Bearer ${token}`;
-  }
   return headers;
 }

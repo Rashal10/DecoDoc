@@ -1,8 +1,8 @@
 import type { Analysis, AnalyzeResponse, Paper, RelatedPaper, SearchResult } from "@decodoc/shared";
-import { ApiError, type UsageStatus, authHeaders, setAuthTokenGetter } from "./auth-api";
+import { ApiError, type UsageStatus, authHeaders } from "./auth-api";
 import { apiUrl, getApiBaseUrl } from "./api-base";
 
-export { setAuthTokenGetter, ApiError, getApiBaseUrl, apiUrl };
+export { ApiError, getApiBaseUrl, apiUrl };
 export type { UsageStatus };
 
 export const ANALYSIS_CANCELLED = "Analysis cancelled.";
