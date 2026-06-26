@@ -6,7 +6,7 @@ DecoDoc helps you read research papers faster. Paste an arXiv ID, DOI, abstract,
 
 ## Demo
 
-<video src="https://github.com/Rashal10/DecoDoc/raw/main/docs/DecoDocFinal.mp4" controls width="100%"></video>
+<video src="https://github.com/user-attachments/assets/8b9c670a-9e44-44db-9cf1-f177542a86a1" controls width="100%"></video>
 
 ## Stack
 
