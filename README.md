@@ -2,6 +2,12 @@
 
 DecoDoc helps you read research papers faster. Paste an arXiv ID, DOI, abstract, or PDF and get a structured breakdown: summary, methods, limitations, scores, flashcards, citation context, and study notes.
 
+**Live demo:** [deco-doc.vercel.app](https://deco-doc.vercel.app/)
+
+## Demo
+
+<video src="https://github.com/Rashal10/DecoDoc/raw/main/docs/DecoDocFinal.mp4" controls width="100%"></video>
+
 ## Stack
 
 - **Frontend:** React 19, TypeScript, Vite, Tailwind CSS
@@ -75,6 +81,8 @@ Split stack: **Vercel** (frontend) + **Render** or **Railway** (API + Postgres).
 
 ### Frontend (Vercel)
 
+Production: [https://deco-doc.vercel.app](https://deco-doc.vercel.app/)
+
 1. Import the repo (root directory, not `client/`).
 2. Build settings come from `vercel.json`.
 3. Set environment variable:
@@ -97,7 +105,7 @@ GROQ_API_KEY=...
 LLM_MODEL=llama-3.3-70b-versatile
 OPENROUTER_API_KEY=...              # optional fallback
 GEMINI_API_KEY=...                  # required for embeddings
-CLIENT_ORIGIN=https://your-app.vercel.app
+CLIENT_ORIGIN=https://deco-doc.vercel.app
 CLIENT_ORIGINS=http://localhost:5173
 ALLOW_VERCEL_PREVIEWS=true
 DATABASE_URL=<Render Postgres Internal URL>
@@ -111,7 +119,7 @@ Migrations run automatically on server startup.
 
 ### Verify
 
-- Frontend: open your Vercel URL
+- Frontend: [https://deco-doc.vercel.app](https://deco-doc.vercel.app/)
 - Backend: `GET https://your-api.onrender.com/api/health`
 
 ## Docker (API + Postgres only)
