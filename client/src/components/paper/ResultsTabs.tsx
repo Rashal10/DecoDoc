@@ -96,7 +96,7 @@ export function ResultsTabs({
         activeTab={activeTab}
         onTabChange={onTabChange}
         ariaLabel="Analysis results"
-        className="results-tabs-sticky mb-8"
+        className="results-tabs-sticky"
       />
 
       <div role="tabpanel" id={`panel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>
