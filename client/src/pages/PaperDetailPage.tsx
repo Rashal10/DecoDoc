@@ -52,7 +52,7 @@ export function PaperDetailPage({
   const isBookmarked = saved.some((p) => p.id === result.paper.id);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-12 md:py-20 flex flex-col gap-8">
+    <div className="mx-auto flex min-w-0 max-w-6xl flex-col gap-8 px-4 py-12 md:py-20">
       <div className="paper-toolbar">
         <button type="button" className="paper-toolbar-btn" onClick={onBack}>
           ← Back

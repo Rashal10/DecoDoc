@@ -90,7 +90,7 @@ export function ResultsTabs({
         : analysis.student.research;
 
   return (
-    <div className="surface-panel p-6 md:p-8">
+    <div className="surface-panel min-w-0 p-6 md:p-8">
       <AnimatedTabs
         tabs={tabs}
         activeTab={activeTab}
