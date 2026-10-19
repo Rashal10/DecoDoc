@@ -121,13 +121,13 @@ async function delay(ms: number, signal: AbortSignal): Promise<void> {
   });
 }
 
-async function followAnalysis(data: AnalyzeResponse | JobPayload): Promise<AnalyzeResponse> {
+async function followAnalysis(data: AnalyzeResponse | JobPayload, timeoutMs = ANALYZE_TIMEOUT_MS): Promise<AnalyzeResponse> {
   if (isReadyAnalysis(data)) return data;
   const jobId = data.jobId;
   if (!jobId) throw new Error("The server returned an incomplete analysis.");
   const signal = activeSignal();
   const started = Date.now();
-  while (Date.now() - started < ANALYZE_TIMEOUT_MS) {
+  while (Date.now() - started < timeoutMs) {
     const job = await request<JobPayload>(`/api/jobs/${encodeURIComponent(jobId)}`);
     if (job.status === "done" && job.paper && job.analysis) {
       return { paper: job.paper, analysis: job.analysis };
@@ -214,7 +214,7 @@ export const api = {
         .then(async (res) => {
           const data = await res.json().catch(() => ({}));
           if (!res.ok) throw new ApiError(data.message ?? data.error ?? "PDF upload failed", data);
-          return followAnalysis(data as AnalyzeResponse | { jobId: string });
+          return followAnalysis(data as AnalyzeResponse | { jobId: string }, PDF_UPLOAD_TIMEOUT_MS);
         })
         .catch((error) => {
           if (error instanceof ApiError) throw error;

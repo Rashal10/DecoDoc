@@ -20,7 +20,7 @@ import {
 import { getPool, isDatabaseReady } from "./init-db";
 import { HttpError } from "./httpError";
 import { lookupMatchesPaper } from "./paperIdentity";
-import { extractPdfTextFromBytes, isPdfBuffer, MAX_PDF_TEXT_CHARS } from "./pdfExtract";
+import { choosePdfText, extractPdfTextFromBytes, isPdfBuffer } from "./pdfExtract";
 import { getUsageStatus, checkAnalysisQuota } from "./quota";
 import { executeAnalysis, loadPaperForReader, type AnalysisAuth } from "./runAnalysis";
 import { rankPapers, toRelated, toSearchResults } from "./similarity";
@@ -122,14 +122,17 @@ router.post("/upload-pdf", analyzeLimiter, checkAnalysisQuota, upload.single("pd
     const bytes = new Uint8Array(req.file.buffer);
     if (!isPdfBuffer(bytes)) throw new HttpError(400, "PDF_REQUIRED", "The upload is not a PDF.");
 
-    let text = "";
+    let serverText = "";
     try {
-      text = await extractPdfTextFromBytes(bytes);
+      serverText = await extractPdfTextFromBytes(bytes);
     } catch (error) {
-      console.warn("Server PDF extraction failed, using client text:", error);
-      text = typeof req.body.text === "string" ? req.body.text : "";
+      console.warn("Server PDF extraction failed, using the browser text:", error);
     }
-    text = text.trim().slice(0, MAX_PDF_TEXT_CHARS);
+    const clientText = typeof req.body.text === "string" ? req.body.text : "";
+    const text = choosePdfText(serverText, clientText);
+    if (serverText.trim().length < 100 && clientText.trim().length >= 100) {
+      console.warn("Server PDF text was too short. Using the browser extraction.");
+    }
     if (text.length < 100) {
       throw new HttpError(400, "PDF_TEXT_REQUIRED", "Could not read enough text from that PDF.");
     }

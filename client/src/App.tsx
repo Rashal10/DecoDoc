@@ -187,7 +187,13 @@ function AppContent({ isSignedIn }: AuthProps) {
       let response: AnalyzeResponse;
       if (analyzeMode === "pdf" && analyzePdf) {
         setStage("extracting");
-        const text = await extractPdfText(analyzePdf, signal);
+        let text = "";
+        try {
+          text = await extractPdfText(analyzePdf, signal);
+        } catch (error) {
+          if (signal.aborted || (error instanceof Error && error.message === ANALYSIS_CANCELLED)) throw error;
+          console.warn("Browser PDF text extraction failed. The server will read the file.", error);
+        }
         if (seq !== requestSeq.current) return;
         setStage("analyzing");
         response = await api.uploadPdf(analyzePdf, text);

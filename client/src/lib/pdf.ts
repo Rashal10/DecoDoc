@@ -1,14 +1,12 @@
 import * as pdfjsLib from "pdfjs-dist";
+import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { ANALYSIS_CANCELLED } from "./api";
 
 function throwIfCancelled(signal?: AbortSignal): void {
   if (signal?.aborted) throw new Error(ANALYSIS_CANCELLED);
 }
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.mjs",
-  import.meta.url
-).toString();
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 const MAX_PDF_PAGES = 48;
 const MAX_PDF_TEXT_CHARS = 48_000;
@@ -18,7 +16,11 @@ export async function extractPdfText(file: File, signal?: AbortSignal): Promise<
   if (file.size > 30 * 1024 * 1024) throw new Error("PDFs are limited to 30 MB.");
   const buffer = await file.arrayBuffer();
   throwIfCancelled(signal);
-  const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+  const pdf = await pdfjsLib.getDocument({
+    data: buffer,
+    disableFontFace: true,
+    isEvalSupported: false,
+  }).promise;
   const pages: string[] = [];
   const pageLimit = Math.min(pdf.numPages, MAX_PDF_PAGES);
 
