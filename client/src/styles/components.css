@@ -355,11 +355,8 @@
 }
 
 .results-tabs-sticky {
-  position: sticky;
-  top: 4.25rem;
-  z-index: 20;
+  position: static;
   margin-bottom: 2rem;
-  background: var(--color-surface-solid);
 }
 
 .gap-card {
