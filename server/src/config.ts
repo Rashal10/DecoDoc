@@ -68,18 +68,37 @@ const LOCAL_DEV_ORIGINS = [
   "http://127.0.0.1:4173",
 ];
 
+function isLoopbackOrigin(origin: string): boolean {
+  try {
+    const { hostname } = new URL(origin);
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+  } catch {
+    return false;
+  }
+}
+
+function isProjectPreview(origin: string): boolean {
+  try {
+    const url = new URL(origin);
+    if (url.protocol !== "https:" || !url.hostname.endsWith(".vercel.app")) return false;
+    const label = url.hostname.slice(0, -".vercel.app".length);
+    return label === "deco-doc" || label.startsWith("deco-doc-");
+  } catch {
+    return false;
+  }
+}
+
 export function isAllowedOrigin(origin: string | undefined): boolean {
   if (!origin) return true;
-  const allowed = new Set([config.clientOrigin, ...config.clientOrigins, ...LOCAL_DEV_ORIGINS]);
-  if (allowed.has(origin)) return true;
-  if (config.allowVercelPreviews) {
-    try {
-      const { hostname, protocol } = new URL(origin);
-      if (protocol === "https:" && hostname.endsWith(".vercel.app")) return true;
-    } catch {
-      return false;
-    }
+  const isProduction = process.env.NODE_ENV === "production";
+  if (isProduction && isLoopbackOrigin(origin)) return false;
+
+  const allowed = new Set<string>([config.clientOrigin, ...config.clientOrigins]);
+  if (!isProduction) {
+    for (const localOrigin of LOCAL_DEV_ORIGINS) allowed.add(localOrigin);
   }
+  if (allowed.has(origin)) return true;
+  if (config.allowVercelPreviews && isProjectPreview(origin)) return true;
   return false;
 }
 

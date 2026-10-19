@@ -11,7 +11,12 @@ let pool: pg.Pool | null = null;
 
 export function getPool(): pg.Pool {
   if (!pool) {
-    pool = new pg.Pool({ connectionString: config.databaseUrl });
+    pool = new pg.Pool({
+      connectionString: config.databaseUrl,
+      connectionTimeoutMillis: 10_000,
+      idleTimeoutMillis: 30_000,
+      max: 10,
+    });
   }
   return pool;
 }
@@ -24,6 +29,7 @@ export async function initDatabase(): Promise<void> {
   const migrationsFolder = resolve(__dirname, "../drizzle");
   const db = getDb();
   await migrate(db, { migrationsFolder });
+  await getPool().query("delete from anonymous_sessions where expires_at < now()");
 }
 
 export async function closeDatabase(): Promise<void> {

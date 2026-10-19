@@ -323,7 +323,8 @@ export function ResultsTabs({
                 ))}
               </div>
               <div className="surface-card flex flex-col items-center p-6">
-                <h4 className="mb-4 self-start font-semibold text-body-lg">Credibility Compass</h4>
+                <h4 className="mb-1 self-start font-semibold text-body-lg">Credibility Compass</h4>
+                <p className="mb-4 self-start text-caption text-[var(--color-fossil-gray)]">Model estimates, not measured scores.</p>
                 <div className="aspect-square w-full max-w-[min(100%,320px)]">
                   <ResponsiveContainer width="100%" height="100%">
                     <RadarChart cx="50%" cy="50%" outerRadius="80%" data={scoreData}>

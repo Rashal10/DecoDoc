@@ -1,6 +1,6 @@
-import fetch from "node-fetch";
-import type { CitationEdge, CitationNode, CitationNodeType, FutureDirection, Paper } from "@decodoc/shared";
+import type { CitationEdge, CitationNode, CitationNodeType, FutureDirection, GenealogyEntry, Paper } from "@decodoc/shared";
 import { config } from "./config";
+import { keepConfirmedAncestors, titlesLooselyMatch } from "./genealogyCheck";
 import { normalizeArxivId } from "./paperIdentity";
 
 function s2Headers(): Record<string, string> {
@@ -426,4 +426,23 @@ export function normalizeCitationGraph(
     .filter((e) => validIds.has(e.source) && validIds.has(e.target) && e.source !== e.target);
 
   return { nodes: finalNodes, edges };
+}
+
+async function lookupCatalogTitle(title: string): Promise<boolean | null> {
+  try {
+    const url = `https://api.openalex.org/works?search=${encodeURIComponent(title)}&select=title&per_page=5`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { results?: Array<{ title?: string }> };
+    return (data.results ?? []).some((work) => (work.title ? titlesLooselyMatch(work.title, title) : false));
+  } catch (error) {
+    console.warn("OpenAlex title confirmation failed:", error);
+    return null;
+  }
+}
+
+export async function confirmAncestors(entries: GenealogyEntry[]): Promise<GenealogyEntry[]> {
+  const limited = entries.slice(0, 4);
+  const checks = await Promise.all(limited.map((entry) => lookupCatalogTitle(entry.title)));
+  return keepConfirmedAncestors(limited, checks);
 }

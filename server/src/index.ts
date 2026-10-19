@@ -8,6 +8,8 @@ import { config, isAllowedOrigin, validateProductionConfig } from "./config";
 import { attachAuthContext, parseCookies } from "./auth";
 import { authRouter } from "./auth-routes";
 import { initDatabase, closeDatabase } from "./init-db";
+import { HttpError } from "./httpError";
+import { requireTrustedOrigin } from "./origin";
 import { router as apiRouter } from "./routes";
 
 const app = express();
@@ -26,6 +28,7 @@ app.use(cors({
 app.use(express.json({ limit: "2mb" }));
 app.use(parseCookies);
 app.use(attachAuthContext);
+app.use(requireTrustedOrigin);
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -38,8 +41,16 @@ const authLimiter = rateLimit({
 app.use("/api/auth", authLimiter, authRouter);
 app.use("/api", apiRouter);
 
-app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error("Unhandled server error:", err);
+
+  if (err instanceof HttpError) {
+    return res.status(err.status).json({
+      error: err.code,
+      message: err.message,
+      ...err.details,
+    });
+  }
 
   if (err instanceof ZodError) {
     const message = err.errors[0]?.message ?? "Invalid request.";
@@ -54,13 +65,14 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
   }
 
   const isProduction = process.env.NODE_ENV === "production";
-  const status = typeof err.status === "number" ? err.status : 500;
+  const status = typeof (err as { status?: number }).status === "number" ? (err as { status: number }).status : 500;
+  const message = err instanceof Error ? err.message : "An unexpected server error occurred.";
   res.status(status).json({
-    error: isProduction && status >= 500 ? "INTERNAL_ERROR" : err.message || "INTERNAL_ERROR",
+    error: isProduction && status >= 500 ? "INTERNAL_ERROR" : message || "INTERNAL_ERROR",
     message:
       isProduction && status >= 500
         ? "An unexpected error occurred. Please try again."
-        : err.message || "An unexpected server error occurred.",
+        : message || "An unexpected server error occurred.",
   });
 });
 

@@ -33,10 +33,21 @@ describe("isAllowedOrigin", () => {
     expect(isAllowedOrigin("https://evil.example.com")).toBe(false);
   });
 
-  it("allows vercel.app preview URLs when enabled", async () => {
+  it("allows only this project's vercel.app preview URLs when enabled", async () => {
     vi.stubEnv("ALLOW_VERCEL_PREVIEWS", "true");
     vi.resetModules();
     const { isAllowedOrigin } = await import("./config");
-    expect(isAllowedOrigin("https://decodoc-git-main-user.vercel.app")).toBe(true);
+    expect(isAllowedOrigin("https://deco-doc-git-main-user.vercel.app")).toBe(true);
+    expect(isAllowedOrigin("https://evil.vercel.app")).toBe(false);
+  });
+
+  it("rejects loopback origins in production even if they are listed", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("CLIENT_ORIGIN", "https://deco-doc.vercel.app");
+    vi.stubEnv("CLIENT_ORIGINS", "http://localhost:5173");
+    vi.resetModules();
+    const { isAllowedOrigin } = await import("./config");
+    expect(isAllowedOrigin("http://localhost:5173")).toBe(false);
+    expect(isAllowedOrigin("https://deco-doc.vercel.app")).toBe(true);
   });
 });

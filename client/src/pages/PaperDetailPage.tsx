@@ -100,6 +100,9 @@ export function PaperDetailPage({
           <Stat label="Reading" value={`${result.analysis.readingTimeMinutes} min`} />
           <Stat label="Repro" value={`${result.analysis.reproducibilityScore}/100`} />
         </div>
+        <p className="mt-3 text-caption text-[var(--color-fossil-gray)]">
+          Difficulty, hype, impact, and reproducibility are model estimates from the paper text.
+        </p>
       </div>
 
       <HeadlineBanner headline={result.analysis.headline} />

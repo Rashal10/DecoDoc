@@ -71,7 +71,7 @@ describe("resolveCitationNetwork", () => {
         if (url.includes("semanticscholar.org")) {
           return { ok: true, json: async () => ({ data: [] }) };
         }
-        if (url.includes("api.openalex.org/works?filter=doi")) {
+        if (url.includes("ids.arxiv") || url.includes("api.openalex.org/works?filter=doi")) {
           return {
             ok: true,
             json: async () => ({

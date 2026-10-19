@@ -4,9 +4,11 @@ import { z } from "zod";
 import { config } from "./config";
 import {
   createEmailUser,
+  findUserByEmailAddress,
   getUserByEmail,
   getUserById,
-  upsertUser,
+  isUniqueViolation,
+  upsertGoogleUser,
 } from "./db";
 import {
   AUTH_COOKIE,
@@ -81,7 +83,7 @@ authRouter.post("/register", async (req, res, next) => {
     }
 
     const { email, password, displayName } = parsed.data;
-    const existing = await getUserByEmail(email);
+    const existing = await findUserByEmailAddress(email);
     if (existing) {
       return res.status(409).json({
         error: "EMAIL_IN_USE",
@@ -89,10 +91,16 @@ authRouter.post("/register", async (req, res, next) => {
       });
     }
 
-    const user = await createEmailUser(email, hashPassword(password), displayName);
+    const user = await createEmailUser(email, await hashPassword(password), displayName);
     await setAuthCookie(res, user);
     res.status(201).json(publicUser(user));
   } catch (error) {
+    if (isUniqueViolation(error)) {
+      return res.status(409).json({
+        error: "EMAIL_IN_USE",
+        message: "An account with this email already exists. Try signing in instead.",
+      });
+    }
     next(error);
   }
 });
@@ -107,17 +115,11 @@ authRouter.post("/login", async (req, res, next) => {
 
     const { email, password } = parsed.data;
     const user = await getUserByEmail(email);
-    if (!user || !user.passwordHash) {
+    const passwordMatches = user?.passwordHash ? await verifyPassword(password, user.passwordHash) : false;
+    if (!user || !user.passwordHash || !passwordMatches) {
       return res.status(401).json({
         error: "INVALID_CREDENTIALS",
-        message: "No account found with this email. Check the spelling or create an account.",
-      });
-    }
-
-    if (!verifyPassword(password, user.passwordHash)) {
-      return res.status(401).json({
-        error: "INVALID_CREDENTIALS",
-        message: "Incorrect password. Try again.",
+        message: "Incorrect email or password.",
       });
     }
 
@@ -214,15 +216,16 @@ authRouter.get("/google/callback", async (req, res) => {
       sub?: string;
       email?: string;
       name?: string;
+      email_verified?: boolean;
     };
 
-    if (!profile.sub || !profile.email) {
+    if (!profile.sub || !profile.email || profile.email_verified !== true) {
       return res.redirect(
-        `${config.clientOrigin}/sign-in?error=${encodeURIComponent("Google did not share your email address.")}`
+        `${config.clientOrigin}/sign-in?error=${encodeURIComponent("Google did not confirm this email address.")}`
       );
     }
 
-    const user = await upsertUser(`google:${profile.sub}`, profile.email, profile.name ?? null);
+    const user = await upsertGoogleUser(profile.sub, profile.email, profile.name ?? null);
     await setAuthCookie(res, user);
     res.redirect(config.clientOrigin);
   } catch {

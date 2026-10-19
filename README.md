@@ -73,7 +73,9 @@ Never commit `.env` or real API keys.
 | `GET /api/auth/me` | Cookie | Current user |
 | `GET /api/auth/google` | — | Start Google OAuth |
 
-Anonymous users get 3 free analyses; signed-in users get 10 per day.
+Anonymous users get 3 free analyses; signed-in users get 10 per day. Pasted abstracts and uploaded PDFs stay private to that account or browser session. arXiv and DOI papers are shared. A repeated analysis of the same public paper reuses the saved result.
+
+`POST /api/analyze` with `"async": true` returns a job id when generation is still running. Poll `GET /api/jobs/:id`.
 
 ## Deployment
 
@@ -107,7 +109,7 @@ OPENROUTER_API_KEY=...              # optional fallback
 GEMINI_API_KEY=...                  # required for embeddings
 CLIENT_ORIGIN=https://deco-doc.vercel.app
 CLIENT_ORIGINS=http://localhost:5173
-ALLOW_VERCEL_PREVIEWS=true
+ALLOW_VERCEL_PREVIEWS=false
 DATABASE_URL=<Render Postgres Internal URL>
 AUTH_JWT_SECRET=<long random string, 32+ chars>
 API_PUBLIC_URL=https://your-api.onrender.com

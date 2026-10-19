@@ -94,6 +94,50 @@ function activeSignal(): AbortSignal {
   return activeController.signal;
 }
 
+type JobPayload = {
+  jobId?: string;
+  status?: string;
+  message?: string;
+  paper?: Paper;
+  analysis?: Analysis | null;
+};
+
+function isReadyAnalysis(data: AnalyzeResponse | JobPayload): data is AnalyzeResponse {
+  return "paper" in data && "analysis" in data && Boolean(data.analysis);
+}
+
+async function delay(ms: number, signal: AbortSignal): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(resolve, ms);
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(new DOMException("Aborted", "AbortError"));
+    };
+    if (signal.aborted) {
+      onAbort();
+      return;
+    }
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
+async function followAnalysis(data: AnalyzeResponse | JobPayload): Promise<AnalyzeResponse> {
+  if (isReadyAnalysis(data)) return data;
+  const jobId = data.jobId;
+  if (!jobId) throw new Error("The server returned an incomplete analysis.");
+  const signal = activeSignal();
+  const started = Date.now();
+  while (Date.now() - started < ANALYZE_TIMEOUT_MS) {
+    const job = await request<JobPayload>(`/api/jobs/${encodeURIComponent(jobId)}`);
+    if (job.status === "done" && job.paper && job.analysis) {
+      return { paper: job.paper, analysis: job.analysis };
+    }
+    if (job.status === "failed") throw new Error(job.message || "Analysis failed.");
+    await delay(2000, signal);
+  }
+  throw new Error("Analysis is taking too long. Try again in a minute.");
+}
+
 async function parseErrorResponse(res: Response): Promise<never> {
   const data = await res.json().catch(() => ({}));
   throw new ApiError(data.message ?? data.error ?? `Request failed: ${res.status}`, data);
@@ -125,10 +169,13 @@ export const api = {
     return request<UsageStatus>("/api/me/usage", { method: "GET" }, { useActiveSignal: false });
   },
   analyze(inputType: string, value: string, title?: string, model?: string) {
-    return request<AnalyzeResponse>("/api/analyze", {
-      method: "POST",
-      body: JSON.stringify({ inputType, value, title, model }),
-    });
+    return request<AnalyzeResponse | { jobId: string }>(
+      "/api/analyze",
+      {
+        method: "POST",
+        body: JSON.stringify({ inputType, value, title, model, async: true }),
+      }
+    ).then((data) => followAnalysis(data));
   },
   uploadPdf(file: File, text: string, model?: string) {
     function extractTitleFromText(rawText: string, fallback: string): string {
@@ -154,6 +201,7 @@ export const api = {
     body.append("text", text);
     body.append("title", title);
     if (model) body.append("model", model);
+    body.append("async", "true");
 
     return authHeaders(false).then((headers: Record<string, string>) =>
       fetch(`${API_BASE}/api/upload-pdf`, {
@@ -166,7 +214,7 @@ export const api = {
         .then(async (res) => {
           const data = await res.json().catch(() => ({}));
           if (!res.ok) throw new ApiError(data.message ?? data.error ?? "PDF upload failed", data);
-          return data as AnalyzeResponse;
+          return followAnalysis(data as AnalyzeResponse | { jobId: string });
         })
         .catch((error) => {
           if (error instanceof ApiError) throw error;
@@ -183,31 +231,6 @@ export const api = {
   },
   similar(id: string) {
     return request<{ related: RelatedPaper[] }>(`/api/similar/${encodeURIComponent(id)}`);
-  },
-  gaps(paperId: string) {
-    return request<{
-      gaps: Array<{ title: string; description: string; opportunity: string; difficulty: string }>;
-      openQuestions: string[];
-      futureDirections: Array<{ title: string; description: string }>;
-    }>("/api/gaps", { method: "POST", body: JSON.stringify({ paperId }) });
-  },
-  eli5(paperId: string) {
-    return request<{ eli5: string; eli12: string; eliUndergrad: string; eliPhD: string }>(
-      "/api/eli5",
-      { method: "POST", body: JSON.stringify({ paperId }) }
-    );
-  },
-  citations(paperId: string) {
-    return request<{
-      nodes: Array<{ id: string; title: string; authors: string; year: number; type: string; citationCount: number }>;
-      edges: Array<{ source: string; target: string; relationship: string }>;
-    }>("/api/citations", { method: "POST", body: JSON.stringify({ paperId }) });
-  },
-  flashcards(paperId: string) {
-    return request<{ flashcards: Array<{ front: string; back: string; category: string; difficulty: string }> }>(
-      "/api/flashcards",
-      { method: "POST", body: JSON.stringify({ paperId }) }
-    );
   },
   getBookmarks() {
     return request<{ bookmarks: Paper[] }>("/api/library/bookmarks", { method: "GET" }, { useActiveSignal: false });

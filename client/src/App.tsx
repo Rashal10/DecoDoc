@@ -16,6 +16,7 @@ import {
   type UsageStatus,
 } from "./lib/api";
 import { useAuth } from "./lib/auth-context";
+import { paperIdFromPath, rememberAppPath, rememberPaperPath } from "./lib/auth-nav";
 import { extractPdfText } from "./lib/pdf";
 import { getRecents, getSaved, mergeBookmarksOnLogin, saveRecent, toggleSaved } from "./lib/storage";
 import { LoginRequiredModal } from "./components/auth/LoginRequiredModal";
@@ -149,6 +150,7 @@ function AppContent({ isSignedIn }: AuthProps) {
       setResult(fullResponse);
       setActivePage("paper-detail");
       setActiveResultsTab("summary");
+      rememberPaperPath(res.paper.id);
       await saveRecent(fullResponse);
       await refreshLocal();
     } catch (err) {
@@ -209,6 +211,7 @@ function AppContent({ isSignedIn }: AuthProps) {
       await refreshUsage();
       setActivePage("paper-detail");
       setActiveResultsTab("summary");
+      rememberPaperPath(response.paper.id);
     } catch (err) {
       if (seq !== requestSeq.current) return;
       if (err instanceof Error && err.message === ANALYSIS_CANCELLED) return;
@@ -234,6 +237,52 @@ function AppContent({ isSignedIn }: AuthProps) {
       }
     }
   }
+
+  async function openPaperById(id: string) {
+    const seq = ++requestSeq.current;
+    setBusy(true);
+    setError("");
+    setResult(null);
+    beginAnalysisSession(ANALYZE_TIMEOUT_MS);
+    try {
+      const res = await api.paper(id);
+      if (seq !== requestSeq.current) return;
+      if (!res.analysis) {
+        setError("Analysis not found for this paper.");
+        setActivePage("home");
+        rememberAppPath();
+        return;
+      }
+      const fullResponse: AnalyzeResponse = { paper: res.paper, analysis: res.analysis };
+      setResult(fullResponse);
+      setActivePage("paper-detail");
+      setActiveResultsTab("summary");
+      rememberPaperPath(res.paper.id);
+      await saveRecent(fullResponse);
+      await refreshLocal();
+    } catch (err) {
+      if (seq !== requestSeq.current) return;
+      if (err instanceof Error && err.message === ANALYSIS_CANCELLED) return;
+      setError(err instanceof Error ? friendlyError(err.message) : "Failed to load paper details");
+      setActivePage("home");
+      rememberAppPath();
+    } finally {
+      endAnalysisSession();
+      if (seq === requestSeq.current) setBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    const initialId = paperIdFromPath(window.location.pathname);
+    if (initialId) void openPaperById(initialId);
+    const onPop = () => {
+      const nextId = paperIdFromPath(window.location.pathname);
+      if (nextId) void openPaperById(nextId);
+      else setActivePage("home");
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   async function analyze() {
     await analyzeInternal(mode, value, abstractTitle, pdf);
@@ -367,7 +416,14 @@ ${a.quiz.map((q) => `**Q:** ${q.question}\n**A:** ${q.answer}`).join("\n\n")}
 
   return (
     <div className="relative min-h-screen bg-[var(--color-blush-paper)] font-sans text-[var(--color-carbon-ink)]">
-      <AppShell activePage={activePage} onNavigate={setActivePage} usage={usage}>
+      <AppShell
+        activePage={activePage}
+        onNavigate={(page) => {
+          rememberAppPath();
+          setActivePage(page);
+        }}
+        usage={usage}
+      >
         {activePage === "home" && (
           <HomePage
             mode={mode}
@@ -392,7 +448,10 @@ ${a.quiz.map((q) => `**Q:** ${q.question}\n**A:** ${q.answer}`).join("\n\n")}
             recents={recents}
             isSignedIn={!!isSignedIn}
             onOpenPaper={openPaperDetail}
-            onNavigateHome={() => setActivePage("home")}
+            onNavigateHome={() => {
+              rememberAppPath();
+              setActivePage("home");
+            }}
           />
         )}
 
@@ -408,7 +467,10 @@ ${a.quiz.map((q) => `**Q:** ${q.question}\n**A:** ${q.answer}`).join("\n\n")}
             readingPlan={readingPlan}
             eli5Level={eli5Level}
             setEli5Level={setEli5Level}
-            onBack={() => setActivePage("library")}
+            onBack={() => {
+              rememberAppPath();
+              setActivePage("library");
+            }}
             onCopySummary={copySummary}
             onExportJson={downloadAnalysis}
             onExportMd={exportMarkdown}

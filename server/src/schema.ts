@@ -21,6 +21,9 @@ export const papers = pgTable("papers", {
   url: text("url"),
   citationCount: integer("citation_count").default(0).notNull(),
   embedding: jsonb("embedding").$type<number[]>(),
+  visibility: text("visibility").notNull().default("public"),
+  ownerUserId: uuid("owner_user_id").references(() => users.id, { onDelete: "set null" }),
+  ownerSessionId: uuid("owner_session_id").references(() => anonymousSessions.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
@@ -30,6 +33,7 @@ export const analyses = pgTable("analyses", {
     .primaryKey()
     .references(() => papers.id, { onDelete: "cascade" }),
   payload: jsonb("payload").notNull(),
+  citationsFetchedAt: timestamp("citations_fetched_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -39,6 +43,7 @@ export const users = pgTable("users", {
   email: text("email"),
   displayName: text("display_name"),
   passwordHash: text("password_hash"),
+  googleSub: text("google_sub").unique(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -71,3 +76,16 @@ export const userBookmarks = pgTable(
   },
   (table) => [primaryKey({ columns: [table.userId, table.paperId] })]
 );
+
+export const analysisJobs = pgTable("analysis_jobs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  paperId: text("paper_id")
+    .notNull()
+    .references(() => papers.id, { onDelete: "cascade" }),
+  status: text("status").notNull(),
+  error: text("error"),
+  ownerUserId: uuid("owner_user_id").references(() => users.id, { onDelete: "set null" }),
+  ownerSessionId: uuid("owner_session_id").references(() => anonymousSessions.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});

@@ -1,6 +1,6 @@
-import fetch from "node-fetch";
 import { nanoid } from "nanoid";
 import type { Paper } from "@decodoc/shared";
+import { extractPdfTextFromBytes, isPdfBuffer } from "./pdfExtract";
 import { normalizeArxivId } from "./paperIdentity";
 
 export function extractArxivId(value: string): string | null {
@@ -43,6 +43,18 @@ export async function fetchArxiv(value: string): Promise<Paper> {
   };
 }
 
+export async function fetchArxivPdfExcerpt(arxivId: string): Promise<string | null> {
+  const res = await fetch(`https://arxiv.org/pdf/${encodeURIComponent(arxivId)}.pdf`, {
+    signal: AbortSignal.timeout(20000),
+    headers: { "User-Agent": "DecoDoc/1.0 (research reading aid; mailto:hello@decodoc.app)" },
+  });
+  if (!res.ok) return null;
+  const bytes = new Uint8Array(await res.arrayBuffer());
+  if (!isPdfBuffer(bytes) || bytes.byteLength > 20 * 1024 * 1024) return null;
+  const text = await extractPdfTextFromBytes(bytes);
+  return text.length > 400 ? text : null;
+}
+
 export async function fetchDoi(doi: string): Promise<Paper> {
   const res = await fetch(`https://api.crossref.org/works/${encodeURIComponent(doi.trim())}`, {
     signal: AbortSignal.timeout(15000)
@@ -57,7 +69,7 @@ export async function fetchDoi(doi: string): Promise<Paper> {
     abstract: (item.abstract ?? "No abstract available from Crossref. Paste an abstract for deeper analysis.").replace(/<[^>]+>/g, ""),
     year: item.issued?.["date-parts"]?.[0]?.[0],
     venue: item["container-title"]?.[0],
-    doi: doi.trim(),
+    doi: doi.trim().toLowerCase(),
     url: item.URL
   };
 }

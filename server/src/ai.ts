@@ -24,7 +24,8 @@ import { validateAnalysis } from "./analysisValidation";
 import {
   normalizeCitationGraph,
   normalizeFutureDirections,
-  resolveCitationNetwork
+  resolveCitationNetwork,
+  confirmAncestors
 } from "./citations";
 
 function getDomainSystemPrompt(domain: SubjectDomain): string {
@@ -467,7 +468,7 @@ PAPER
 Title: ${paper.title}
 Authors: ${paper.authors.join(", ")}
 Year: ${paper.year ?? "unknown"}
-Abstract: ${paper.abstract.slice(0, 16000)}
+Abstract: ${paper.abstract.slice(0, 28000)}
 
 FIELD RULES
 - headline: One clear hook sentence that states why the paper matters (max 20 words).
@@ -484,7 +485,7 @@ FIELD RULES
 - eli5: Explain like a 5-year-old. Use a simple analogy. 2-3 short sentences. No jargon or acronyms.
 - eli12: Explain like a curious 12-year-old. Analogy + what problem it solves + one "cool fact". 3-4 sentences.
 - eliUndergrad: Assume one intro course in the field. Define each technical term once. Include one concrete example from the paper. 4-5 sentences.
-- eliPhD: Expert briefing. Architecture, training data scale, key benchmarks with numbers, zero-shot vs fine-tuned results, and explicit limitations. 5-7 sentences.
+- eliPhD: Expert briefing for a specialist. Name methods, datasets, and numbers only when they appear in the paper text. State the limitations explicitly. 5-7 sentences.
 - flashcards: 14-16 study cards. Rules per card:
   - front: a clear, self-contained question (max 20 words). Must NOT reveal the answer.
   - hint: a subtle one-line clue without giving away the answer (max 12 words).
@@ -573,7 +574,16 @@ export async function analyzePaper(paper: Paper, modelName?: string): Promise<An
     starterCode: raw.starterCode ?? []
   };
 
-  return validateAnalysis(analysis, paper);
+  const validated = validateAnalysis(analysis, paper);
+  try {
+    validated.genealogy = {
+      ...validated.genealogy,
+      ancestors: await confirmAncestors(validated.genealogy.ancestors),
+    };
+  } catch (error) {
+    console.warn("Genealogy confirmation skipped:", error);
+  }
+  return validated;
 }
 
 export async function buildRoadmap(paper: Paper): Promise<RoadmapNode[]> {

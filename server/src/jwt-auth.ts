@@ -2,7 +2,7 @@ import { SignJWT, jwtVerify } from "jose";
 import { config } from "./config";
 
 const AUTH_COOKIE = "decodoc_auth";
-const TOKEN_TTL = "30d";
+const TOKEN_TTL = "7d";
 
 function secretKey() {
   return new TextEncoder().encode(config.authJwtSecret);
@@ -44,7 +44,7 @@ export function authCookieOptions() {
     httpOnly: true,
     secure: isProduction,
     sameSite: (isProduction ? "none" : "lax") as "none" | "lax",
-    maxAge: 30 * 24 * 60 * 60 * 1000,
+    maxAge: 7 * 24 * 60 * 60 * 1000,
     path: "/",
   };
 }
