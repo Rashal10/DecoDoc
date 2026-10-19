@@ -17,7 +17,7 @@ import {
   removeBookmark,
   syncBookmarks,
 } from "./db";
-import { getPool } from "./init-db";
+import { getPool, isDatabaseReady } from "./init-db";
 import { HttpError } from "./httpError";
 import { lookupMatchesPaper } from "./paperIdentity";
 import { extractPdfTextFromBytes, isPdfBuffer, MAX_PDF_TEXT_CHARS } from "./pdfExtract";
@@ -64,6 +64,9 @@ async function readablePaper(req: express.Request, lookup: string) {
 }
 
 router.get("/health", async (_req, res) => {
+  if (!isDatabaseReady()) {
+    return res.json({ ok: true, service: "DecoDoc API", database: false });
+  }
   try {
     await getPool().query("select 1 as ok");
     res.json({ ok: true, service: "DecoDoc API", database: true });

@@ -38,6 +38,10 @@ const authLimiter = rateLimit({
   message: { error: "RATE_LIMIT", message: "Too many auth attempts. Try again later." },
 });
 
+app.get("/", (_req, res) => {
+  res.json({ ok: true, service: "DecoDoc API" });
+});
+
 app.use("/api/auth", authLimiter, authRouter);
 app.use("/api", apiRouter);
 
@@ -77,10 +81,10 @@ app.use((err: unknown, _req: express.Request, res: express.Response, _next: expr
 });
 
 async function main() {
+  console.log("[DecoDoc Server] Starting");
   validateProductionConfig();
-  await initDatabase();
   const server = app.listen(config.port, "0.0.0.0", () => {
-    console.log(`[DecoDoc Server] Running on http://localhost:${config.port}`);
+    console.log(`[DecoDoc Server] Listening on http://localhost:${config.port}`);
   });
 
   const shutdown = async (signal: string) => {
@@ -93,6 +97,9 @@ async function main() {
 
   process.on("SIGTERM", () => void shutdown("SIGTERM"));
   process.on("SIGINT", () => void shutdown("SIGINT"));
+
+  await initDatabase();
+  console.log("[DecoDoc Server] Ready");
 }
 
 main().catch((err) => {
