@@ -1,6 +1,6 @@
-import type { Paper } from "@decodoc/shared";
 import express from "express";
 import multer from "multer";
+import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import { embedText } from "./ai";
 import { config } from "./config";
@@ -15,15 +15,13 @@ import {
   isBookmarked,
   listPublicEmbeddedPapers,
   removeBookmark,
-  searchPublicByVector,
   syncBookmarks,
 } from "./db";
 import { getPool, isDatabaseReady } from "./init-db";
 import { HttpError } from "./httpError";
 import { lookupMatchesPaper } from "./paperIdentity";
-import { choosePdfText, extractPdfTextFromBytes, isPdfBuffer, MIN_PDF_TEXT_CHARS, PDF_NO_TEXT_MESSAGE } from "./pdfExtract";
+import { choosePdfText, extractPdfTextFromBytes, isPdfBuffer } from "./pdfExtract";
 import { getUsageStatus, checkAnalysisQuota } from "./quota";
-import { analyzeAccountLimiter, analyzeNetworkLimiter, searchLimiter } from "./rateLimit";
 import { executeAnalysis, loadPaperForReader, type AnalysisAuth } from "./runAnalysis";
 import { rankPapers, toRelated, toSearchResults } from "./similarity";
 
@@ -32,6 +30,22 @@ export const router = express.Router();
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: config.maxPdfBytes },
+});
+
+const searchLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "RATE_LIMIT", message: "Too many search requests. Try again in a minute." },
+});
+
+const analyzeLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "RATE_LIMIT", message: "Too many analyses from this network. Try again in an hour." },
 });
 
 function readerFrom(req: express.Request): AnalysisAuth {
@@ -70,27 +84,19 @@ router.get("/me/usage", async (req, res, next) => {
   }
 });
 
-async function nearestPublicPapers(
-  embedding: number[],
-  limit: number,
-  excludeId?: string
-): Promise<Array<Paper & { score: number }>> {
-  const fromVector = await searchPublicByVector(embedding, limit, excludeId);
-  if (fromVector) return fromVector;
-  return rankPapers(embedding, await listPublicEmbeddedPapers(), excludeId, limit);
-}
-
 router.get("/search", searchLimiter, async (req, res, next) => {
   try {
     const q = z.string().trim().min(2).max(300).parse(req.query.q ?? "");
+    const papers = await listPublicEmbeddedPapers();
+    if (papers.length === 0) return res.json({ results: [] });
     const embedding = await embedText(q);
-    res.json({ results: toSearchResults(await nearestPublicPapers(embedding, 12)) });
+    res.json({ results: toSearchResults(rankPapers(embedding, papers, undefined, 12)) });
   } catch (error) {
     next(error);
   }
 });
 
-router.post("/analyze", analyzeAccountLimiter, analyzeNetworkLimiter, checkAnalysisQuota, async (req, res, next) => {
+router.post("/analyze", analyzeLimiter, checkAnalysisQuota, async (req, res, next) => {
   try {
     const body = analyzeSchema.parse(req.body);
     const outcome = await executeAnalysis({
@@ -110,7 +116,7 @@ router.post("/analyze", analyzeAccountLimiter, analyzeNetworkLimiter, checkAnaly
   }
 });
 
-router.post("/upload-pdf", analyzeAccountLimiter, analyzeNetworkLimiter, checkAnalysisQuota, upload.single("pdf"), async (req, res, next) => {
+router.post("/upload-pdf", analyzeLimiter, checkAnalysisQuota, upload.single("pdf"), async (req, res, next) => {
   try {
     if (!req.file) throw new HttpError(400, "PDF_REQUIRED", "PDF file is required.");
     const bytes = new Uint8Array(req.file.buffer);
@@ -124,11 +130,11 @@ router.post("/upload-pdf", analyzeAccountLimiter, analyzeNetworkLimiter, checkAn
     }
     const clientText = typeof req.body.text === "string" ? req.body.text : "";
     const text = choosePdfText(serverText, clientText);
-    if (serverText.trim().length < MIN_PDF_TEXT_CHARS && clientText.trim().length >= MIN_PDF_TEXT_CHARS) {
+    if (serverText.trim().length < 100 && clientText.trim().length >= 100) {
       console.warn("Server PDF text was too short. Using the browser extraction.");
     }
-    if (text.length < MIN_PDF_TEXT_CHARS) {
-      throw new HttpError(400, "PDF_TEXT_REQUIRED", PDF_NO_TEXT_MESSAGE);
+    if (text.length < 100) {
+      throw new HttpError(400, "PDF_TEXT_REQUIRED", "Could not read enough text from that PDF.");
     }
 
     const title = typeof req.body.title === "string" && req.body.title.trim()
@@ -190,7 +196,7 @@ router.get("/similar/:id", async (req, res, next) => {
     if (paper.visibility === "private") return res.json({ related: [] });
     const stored = await getPaperEmbedding(paper.id);
     const embedding = stored ?? (await embedText(`${paper.title}\n${paper.abstract}`.slice(0, 8_000)));
-    const related = toRelated(await nearestPublicPapers(embedding, 8, paper.id));
+    const related = toRelated(rankPapers(embedding, await listPublicEmbeddedPapers(), paper.id, 8));
     res.json({ related });
   } catch (error) {
     next(error);

@@ -1,8 +1,5 @@
 export const MAX_PDF_PAGES = 48;
 export const MAX_PDF_TEXT_CHARS = 48_000;
-export const MIN_PDF_TEXT_CHARS = 100;
-export const PDF_NO_TEXT_MESSAGE =
-  "This PDF does not contain enough selectable text. It may be a scan or an image. Paste the abstract instead.";
 
 export function isPdfBuffer(data: Uint8Array): boolean {
   if (data.length < 5) return false;

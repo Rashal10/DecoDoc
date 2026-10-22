@@ -1,7 +1,7 @@
 # Local development only — API + Postgres. Run the frontend with `npm run dev`.
 services:
   postgres:
-    image: pgvector/pgvector:pg16
+    image: postgres:16
     environment:
       POSTGRES_USER: decodoc
       POSTGRES_PASSWORD: decodoc

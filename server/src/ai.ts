@@ -511,7 +511,6 @@ FIELD RULES
 
 export async function embedText(text: string): Promise<number[]> {
   const ai = new GoogleGenerativeAI(requireGeminiKey());
-  // Default output is 3072 values. papers.embedding_vec is vector(3072). Keep this size.
   const model = ai.getGenerativeModel({ model: "gemini-embedding-001" });
   const result = await model.embedContent(text);
   return result.embedding.values;

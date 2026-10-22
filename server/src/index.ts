@@ -1,28 +1,94 @@
-import { createApp } from "./app";
-import { config, validateProductionConfig } from "./config";
-import { closeDatabase, initDatabase } from "./init-db";
-import { requeueTrackedJobs } from "./jobState";
-import { startJobResumeLoop, stopJobResumeLoop } from "./runAnalysis";
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import multer from "multer";
+import rateLimit from "express-rate-limit";
+import { ZodError } from "zod";
+import { config, isAllowedOrigin, validateProductionConfig } from "./config";
+import { attachAuthContext, parseCookies } from "./auth";
+import { authRouter } from "./auth-routes";
+import { initDatabase, closeDatabase } from "./init-db";
+import { HttpError } from "./httpError";
+import { requireTrustedOrigin } from "./origin";
+import { router as apiRouter } from "./routes";
+
+const app = express();
+
+if (process.env.NODE_ENV === "production") {
+  app.set("trust proxy", 1);
+}
+
+app.use(helmet());
+app.use(cors({
+  origin(origin, callback) {
+    callback(null, isAllowedOrigin(origin));
+  },
+  credentials: true,
+}));
+app.use(express.json({ limit: "2mb" }));
+app.use(parseCookies);
+app.use(attachAuthContext);
+app.use(requireTrustedOrigin);
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "RATE_LIMIT", message: "Too many auth attempts. Try again later." },
+});
+
+app.get("/", (_req, res) => {
+  res.json({ ok: true, service: "DecoDoc API" });
+});
+
+app.use("/api/auth", authLimiter, authRouter);
+app.use("/api", apiRouter);
+
+app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error("Unhandled server error:", err);
+
+  if (err instanceof HttpError) {
+    return res.status(err.status).json({
+      error: err.code,
+      message: err.message,
+      ...err.details,
+    });
+  }
+
+  if (err instanceof ZodError) {
+    const message = err.errors[0]?.message ?? "Invalid request.";
+    return res.status(400).json({ error: "VALIDATION_ERROR", message });
+  }
+
+  if (err instanceof multer.MulterError) {
+    const status = err.code === "LIMIT_FILE_SIZE" ? 413 : 400;
+    const message =
+      err.code === "LIMIT_FILE_SIZE" ? "PDF exceeds the 30 MB upload limit." : err.message;
+    return res.status(status).json({ error: err.code, message });
+  }
+
+  const isProduction = process.env.NODE_ENV === "production";
+  const status = typeof (err as { status?: number }).status === "number" ? (err as { status: number }).status : 500;
+  const message = err instanceof Error ? err.message : "An unexpected server error occurred.";
+  res.status(status).json({
+    error: isProduction && status >= 500 ? "INTERNAL_ERROR" : message || "INTERNAL_ERROR",
+    message:
+      isProduction && status >= 500
+        ? "An unexpected error occurred. Please try again."
+        : message || "An unexpected server error occurred.",
+  });
+});
 
 async function main() {
   console.log("[DecoDoc Server] Starting");
   validateProductionConfig();
-  const app = createApp();
   const server = app.listen(config.port, "0.0.0.0", () => {
     console.log(`[DecoDoc Server] Listening on http://localhost:${config.port}`);
   });
 
-  let stopping = false;
   const shutdown = async (signal: string) => {
-    if (stopping) return;
-    stopping = true;
-    console.log(`[DecoDoc Server] ${signal} received, shutting down.`);
-    stopJobResumeLoop();
-    try {
-      await requeueTrackedJobs();
-    } catch (error) {
-      console.error("Could not requeue analysis jobs:", error);
-    }
+    console.log(`[DecoDoc Server] ${signal} received, shutting down…`);
     server.close(async () => {
       await closeDatabase();
       process.exit(0);
@@ -33,7 +99,6 @@ async function main() {
   process.on("SIGINT", () => void shutdown("SIGINT"));
 
   await initDatabase();
-  startJobResumeLoop();
   console.log("[DecoDoc Server] Ready");
 }
 
