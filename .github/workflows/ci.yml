@@ -9,6 +9,22 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: decodoc
+          POSTGRES_PASSWORD: decodoc
+          POSTGRES_DB: decodoc
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U decodoc -d decodoc"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      DATABASE_URL: postgresql://decodoc:decodoc@localhost:5432/decodoc
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
