@@ -1,7 +1,8 @@
 import { and, count, eq, gte, inArray, isNotNull, or, sql } from "drizzle-orm";
 import type { Analysis, Paper } from "@decodoc/shared";
 import { parseCachedAnalysis } from "./analysisCache";
-import { getDb } from "./init-db";
+import { EMBEDDING_DIMENSIONS, toVectorLiteral } from "./embedding";
+import { getDb, getPool } from "./init-db";
 import { normalizeArxivId, normalizeDoi } from "./paperIdentity";
 import type { PaperVisibility } from "./paperAccess";
 import {
@@ -123,6 +124,7 @@ export async function upsertPaper(paper: Paper, ownership: PaperOwnership = { vi
     target: papers.id,
     set: updateSet,
   });
+  await syncPaperEmbeddingVector(paper.id);
   const stored = await getPaper(paper.id);
   return stored ?? { ...paper, visibility, ownerUserId: ownership.ownerUserId ?? null, ownerSessionId: ownership.ownerSessionId ?? null };
 }
@@ -171,6 +173,111 @@ export async function getPaper(lookup: string): Promise<StoredPaper | null> {
   }
 
   return null;
+}
+
+let vectorBackfillDone = false;
+
+function isMissingVectorSupport(error: unknown): boolean {
+  const code = (error as { code?: string }).code;
+  return code === "42703" || code === "42704" || code === "42883";
+}
+
+async function backfillEmbeddingVectors(): Promise<boolean> {
+  if (vectorBackfillDone) return true;
+  try {
+    await getPool().query(
+      `update papers
+       set embedding_vec = embedding::text::vector
+       where visibility = 'public'
+         and embedding_vec is null
+         and jsonb_typeof(embedding) = 'array'
+         and jsonb_array_length(embedding) = $1`,
+      [EMBEDDING_DIMENSIONS]
+    );
+    vectorBackfillDone = true;
+    return true;
+  } catch (error) {
+    console.warn("Vector backfill is not ready, using the in-memory index:", error);
+    return false;
+  }
+}
+
+export async function syncPaperEmbeddingVector(paperId: string): Promise<void> {
+  try {
+    await getPool().query(
+      `update papers
+       set embedding_vec = case
+         when embedding is null then null
+         when jsonb_typeof(embedding) = 'array' and jsonb_array_length(embedding) = $2 then embedding::text::vector
+         else null
+       end
+       where id = $1`,
+      [paperId, EMBEDDING_DIMENSIONS]
+    );
+  } catch (error) {
+    vectorBackfillDone = false;
+    if (isMissingVectorSupport(error)) {
+      console.warn("Embedding vector column is not ready yet.");
+      return;
+    }
+    throw error;
+  }
+}
+
+type VectorSearchRow = {
+  id: string;
+  title: string;
+  authors: string[] | null;
+  abstract: string;
+  year: number | null;
+  venue: string | null;
+  arxiv_id: string | null;
+  doi: string | null;
+  url: string | null;
+  citation_count: number | null;
+  created_at: Date | null;
+  score: number | string;
+};
+
+export async function searchPublicByVector(
+  embedding: number[],
+  limit: number,
+  excludeId?: string
+): Promise<Array<Paper & { score: number }> | null> {
+  const literal = toVectorLiteral(embedding);
+  if (!literal) return null;
+  if (!(await backfillEmbeddingVectors())) return null;
+
+  try {
+    const result = await getPool().query<VectorSearchRow>(
+      `select id, title, authors, abstract, year, venue, arxiv_id, doi, url, citation_count, created_at,
+              1 - (embedding_vec <=> $1::vector) as score
+       from papers
+       where visibility = 'public'
+         and embedding_vec is not null
+         and ($2::text is null or id <> $2)
+       order by embedding_vec <=> $1::vector
+       limit $3`,
+      [literal, excludeId ?? null, Math.min(Math.max(limit, 1), 24)]
+    );
+    return result.rows.map((row) => ({
+      id: row.id,
+      title: row.title,
+      authors: Array.isArray(row.authors) ? row.authors : [],
+      abstract: row.abstract,
+      year: row.year ?? undefined,
+      venue: row.venue ?? undefined,
+      arxivId: row.arxiv_id ?? undefined,
+      doi: row.doi ?? undefined,
+      url: row.url ?? undefined,
+      citationCount: row.citation_count ?? 0,
+      createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : undefined,
+      score: Number(row.score),
+    }));
+  } catch (error) {
+    console.warn("Vector search failed, using the in-memory index:", error);
+    return null;
+  }
 }
 
 export async function getPaperEmbedding(paperId: string): Promise<number[] | null> {
@@ -491,7 +598,7 @@ export async function claimAnalysisJob(
       .insert(analysisJobs)
       .values({
         paperId,
-        status: "queued",
+        status: "running",
         ownerUserId: owner.userId,
         ownerSessionId: owner.sessionId,
       })
@@ -508,6 +615,95 @@ export async function claimAnalysisJob(
     if (!again[0]) throw error;
     return { id: again[0].id, shouldRun: false };
   }
+}
+
+export async function findReusableReservation(params: {
+  paperId: string;
+  userId?: string | null;
+  sessionId?: string | null;
+  since: Date;
+}): Promise<string | null> {
+  const since = new Date(params.since.getTime() - 60_000);
+  const rows = await getDb()
+    .select({ id: analysisUsage.id })
+    .from(analysisUsage)
+    .where(
+      and(
+        eq(analysisUsage.paperId, params.paperId),
+        eq(analysisUsage.wasCacheHit, false),
+        gte(analysisUsage.createdAt, since),
+        params.userId
+          ? eq(analysisUsage.userId, params.userId)
+          : eq(analysisUsage.sessionId, params.sessionId ?? "")
+      )
+    )
+    .orderBy(sql`${analysisUsage.createdAt} desc`)
+    .limit(1);
+  return rows[0]?.id ?? null;
+}
+
+export async function failStaleAnalysisJobs(): Promise<void> {
+  await getPool().query(
+    `update analysis_jobs
+     set status = 'failed', error = 'The previous analysis timed out.', updated_at = now()
+     where status in ('queued', 'running')
+       and updated_at < now() - interval '24 hours'`
+  );
+}
+
+export async function listResumableJobIds(): Promise<string[]> {
+  const result = await getPool().query<{ id: string }>(
+    `select id from analysis_jobs
+     where status = 'queued'
+        or (status = 'running' and updated_at < now() - interval '90 seconds')
+     order by created_at asc
+     limit 8`
+  );
+  return result.rows.map((row) => row.id);
+}
+
+export type ResumableJob = {
+  id: string;
+  paperId: string;
+  ownerUserId: string | null;
+  ownerSessionId: string | null;
+  createdAt: Date;
+};
+
+export async function claimJobForResume(jobId: string): Promise<ResumableJob | null> {
+  const result = await getPool().query<{
+    id: string;
+    paper_id: string;
+    owner_user_id: string | null;
+    owner_session_id: string | null;
+    created_at: Date;
+  }>(
+    `update analysis_jobs
+     set status = 'running', error = null, updated_at = now()
+     where id = $1
+       and (
+         status = 'queued'
+         or (status = 'running' and updated_at < now() - interval '90 seconds')
+       )
+     returning id, paper_id, owner_user_id, owner_session_id, created_at`,
+    [jobId]
+  );
+  const row = result.rows[0];
+  if (!row) return null;
+  return {
+    id: row.id,
+    paperId: row.paper_id,
+    ownerUserId: row.owner_user_id,
+    ownerSessionId: row.owner_session_id,
+    createdAt: row.created_at instanceof Date ? row.created_at : new Date(row.created_at),
+  };
+}
+
+export async function touchAnalysisJob(id: string): Promise<void> {
+  await getPool().query(
+    `update analysis_jobs set updated_at = now() where id = $1 and status = 'running'`,
+    [id]
+  );
 }
 
 export async function markAnalysisJob(id: string, status: "running" | "done" | "failed", error?: string | null) {

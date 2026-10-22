@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { choosePdfText, isPdfBuffer, limitExtractedText, MAX_PDF_TEXT_CHARS } from "./pdfExtract";
+import { choosePdfText, isPdfBuffer, limitExtractedText, MAX_PDF_TEXT_CHARS, PDF_NO_TEXT_MESSAGE } from "./pdfExtract";
 
 describe("pdf extract helpers", () => {
   it("recognizes a PDF header", () => {
@@ -12,6 +12,11 @@ describe("pdf extract helpers", () => {
     expect(choosePdfText("", client)).toBe(client);
     expect(choosePdfText("short", client)).toBe(client);
     expect(choosePdfText("B".repeat(240), client)).toBe("B".repeat(240));
+  });
+
+  it("tells the reader to paste an abstract when the PDF has no selectable text", () => {
+    expect(PDF_NO_TEXT_MESSAGE).toContain("scan");
+    expect(PDF_NO_TEXT_MESSAGE).toContain("Paste the abstract");
   });
 
   it("truncates extracted text at the analysis cap", () => {
