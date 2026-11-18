@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { Archive, Brain, Network, SearchCheck } from "lucide-react";
 import { BentoGrid, BentoGridItem } from "../ui/aceternity/bento-grid";
 import { useScrollReveal } from "../../hooks/use-scroll-reveal";
@@ -5,10 +6,53 @@ import { cn } from "../../lib/utils";
 
 const BENTO_MEDIA = {
   deepAnalysis: "/images/bento/deep-analysis.mp4",
+  deepAnalysisPoster: "/images/bento/deep-analysis-poster.jpg",
   validityScores: "/images/bento/validity-scores.png",
   researchContext: "/images/bento/research-context.png",
   researchLibrary: "/images/bento/research-library.png",
 } as const;
+
+/** Loads and plays the clip only once it's near the viewport; shows a still frame until then. */
+function LazyVideo({ src, poster, className, label }: { src: string; poster: string; className: string; label: string }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  const [active, setActive] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setActive(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) {
+          setActive(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "200px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <video
+      ref={ref}
+      src={active ? src : undefined}
+      poster={poster}
+      className={className}
+      autoPlay={active}
+      loop
+      muted
+      playsInline
+      preload={active ? "auto" : "none"}
+      aria-label={label}
+    />
+  );
+}
 
 function BentoMediaHeader({
   kind,
@@ -34,16 +78,7 @@ function BentoMediaHeader({
       )}
     >
       {kind === "video" ? (
-        <video
-          src={src}
-          className={mediaClassName}
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="auto"
-          aria-label={alt}
-        />
+        <LazyVideo src={src} poster={BENTO_MEDIA.deepAnalysisPoster} className={mediaClassName} label={alt} />
       ) : (
         <img
           src={src}

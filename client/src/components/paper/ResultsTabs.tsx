@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { BookOpen, ClipboardCopy, Compass } from "lucide-react";
+import { BookOpen, ClipboardCopy, Compass, FlaskConical, GraduationCap, Lightbulb, type LucideIcon } from "lucide-react";
 import { PolarAngleAxis, PolarGrid, Radar, RadarChart, ResponsiveContainer, Tooltip } from "recharts";
 import type { AnalyzeResponse, StudentMode } from "@decodoc/shared";
 import { detectDomain } from "@decodoc/shared";
 import { AnimatedTabs } from "../ui/aceternity/animated-tabs";
 import type { ResultsTab } from "../../lib/app-utils";
+import { cn } from "../../lib/utils";
 import {
   AnalysisSectionView,
   CitationPaperCard,
@@ -20,6 +21,8 @@ import {
   ResearchGapCard,
   VerdictBadge,
 } from "../analysis/AnalysisViews";
+import { ReviewDeckCallout } from "./ReviewDeckCallout";
+import { RelatedPapers } from "./RelatedPapers";
 
 function TabEmpty({ icon: Icon, title, text }: { icon: typeof BookOpen; title: string; text: string }) {
   return (
@@ -31,49 +34,98 @@ function TabEmpty({ icon: Icon, title, text }: { icon: typeof BookOpen; title: s
   );
 }
 
+type GroupId = "understand" | "study" | "research";
+
+export type TabGroup = {
+  id: GroupId;
+  label: string;
+  hint: string;
+  icon: LucideIcon;
+  tabs: { id: ResultsTab; label: string }[];
+};
+
+export function buildTabGroups(hasStarterCode: boolean): TabGroup[] {
+  return [
+    {
+      id: "understand",
+      label: "Understand",
+      hint: "What it says and whether to trust it",
+      icon: Lightbulb,
+      tabs: [
+        { id: "summary", label: "Summary & Plan" },
+        { id: "eli5", label: "Explain It" },
+        { id: "hype", label: "Hype Radar" },
+      ],
+    },
+    {
+      id: "study",
+      label: "Study",
+      hint: "Make it stick",
+      icon: GraduationCap,
+      tabs: [
+        { id: "flashcards", label: "Flashcards" },
+        { id: "roadmap", label: "Roadmap" },
+        { id: "interview", label: "Interview Q&A" },
+      ],
+    },
+    {
+      id: "research",
+      label: "Research",
+      hint: "Where it fits and what's next",
+      icon: FlaskConical,
+      tabs: [
+        { id: "related", label: "Related Papers" },
+        { id: "citations", label: "Citation Map" },
+        { id: "genealogy", label: "Prior Work" },
+        { id: "gaps", label: "Gap Finder" },
+        ...(hasStarterCode ? [{ id: "code" as const, label: "Starter Code" }] : []),
+      ],
+    },
+  ];
+}
+
+function scoreDataFor(result: AnalyzeResponse) {
+  const a = result.analysis;
+  return [
+    { metric: "Difficulty", value: a.difficulty },
+    { metric: "Hype", value: a.hypeScore },
+    { metric: "Reading Time", value: a.readingTimeMinutes },
+    { metric: "Repro", value: a.reproducibilityScore },
+    { metric: "Industry", value: a.industryScore },
+    { metric: "Impact", value: a.impactScore },
+  ];
+}
+
+function readingPlanFor(result: AnalyzeResponse) {
+  const t = result.analysis.readingTimeMinutes;
+  const difficulty = result.analysis.difficulty;
+  const repro = result.analysis.reproducibilityScore;
+  return [
+    { title: "Skim", time: `${Math.max(2, Math.round(t * 0.15))} min`, detail: "Read TLDR, problem, novelty, and verdict first." },
+    { title: "Deep read", time: `${Math.max(10, Math.round(t * (1.2 + (difficulty / 100) * 1.5)))} min`, detail: "Focus on method, assumptions, evaluation, and limitations." },
+    { title: "Validate", time: `${Math.max(5, Math.round(10 + (100 - repro) * 0.2))} min`, detail: "Check datasets, baselines, code availability, and reproducibility risk." },
+    { title: "Apply", time: `${Math.max(10, Math.round(15 + difficulty * 0.25))} min`, detail: "Translate the method into implementation notes or an experiment plan." },
+  ];
+}
+
 export type ResultsTabsProps = {
   result: AnalyzeResponse;
   activeTab: ResultsTab;
   onTabChange: (tab: ResultsTab) => void;
-  studentMode: StudentMode;
-  setStudentMode: (mode: StudentMode) => void;
-  scoreData: { metric: string; value: number }[];
-  readingPlan: { title: string; time: string; detail: string }[];
-  eli5Level: number;
-  setEli5Level: (l: number) => void;
 };
 
-export function ResultsTabs({
-  result,
-  activeTab,
-  onTabChange,
-  studentMode,
-  setStudentMode,
-  scoreData,
-  readingPlan,
-  eli5Level,
-  setEli5Level,
-}: ResultsTabsProps) {
+export function ResultsTabs({ result, activeTab, onTabChange }: ResultsTabsProps) {
   const [codeCopied, setCodeCopied] = useState(false);
+  const [studentMode, setStudentMode] = useState<StudentMode>("beginner");
+  const [eli5Level, setEli5Level] = useState(0);
   const analysis = result.analysis;
   const domain = detectDomain(result.paper.title, result.paper.abstract ?? "");
   const isCS = domain === "cs" && analysis.starterCode.length > 0;
 
-  const tabs = useMemo(() => {
-    const base = [
-      { id: "summary" as const, label: "Summary & Plan" },
-      { id: "eli5" as const, label: "Explain It" },
-      { id: "flashcards" as const, label: "Flashcards" },
-      { id: "gaps" as const, label: "Gap Finder" },
-      { id: "citations" as const, label: "Citation Map" },
-      { id: "genealogy" as const, label: "Prior Work" },
-      ...(isCS ? [{ id: "code" as const, label: "Starter Code" }] : []),
-      { id: "hype" as const, label: "Hype Radar" },
-      { id: "roadmap" as const, label: "Roadmap" },
-      { id: "interview" as const, label: "Interview Q&A" },
-    ];
-    return base;
-  }, [isCS]);
+  const groups = useMemo(() => buildTabGroups(isCS), [isCS]);
+  const activeGroup = groups.find((g) => g.tabs.some((t) => t.id === activeTab)) ?? groups[0]!;
+  const scoreData = useMemo(() => scoreDataFor(result), [result]);
+  const readingPlan = useMemo(() => readingPlanFor(result), [result]);
 
   useEffect(() => {
     if (!isCS && activeTab === "code") onTabChange("summary");
@@ -91,11 +143,35 @@ export function ResultsTabs({
 
   return (
     <div className="surface-panel min-w-0 p-6 md:p-8">
+      <div className="results-groups" role="group" aria-label="Result sections">
+        {groups.map((group) => {
+          const Icon = group.icon;
+          const selected = group.id === activeGroup.id;
+          return (
+            <button
+              key={group.id}
+              type="button"
+              className={cn("results-group", selected && "is-active")}
+              aria-pressed={selected}
+              onClick={() => {
+                if (!selected) onTabChange(group.tabs[0]!.id);
+              }}
+            >
+              <Icon className="h-4 w-4 shrink-0" aria-hidden />
+              <span className="results-group-text">
+                <span className="results-group-label">{group.label}</span>
+                <span className="results-group-hint">{group.hint}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       <AnimatedTabs
-        tabs={tabs}
+        tabs={activeGroup.tabs}
         activeTab={activeTab}
         onTabChange={onTabChange}
-        ariaLabel="Analysis results"
+        ariaLabel={`${activeGroup.label} sections`}
         className="results-tabs-sticky"
       />
 
@@ -203,10 +279,15 @@ export function ResultsTabs({
             {analysis.flashcards.length === 0 ? (
               <TabEmpty icon={BookOpen} title="No flashcards" text="Flashcards will appear here after analysis." />
             ) : (
-              <FlashcardDeck cards={analysis.flashcards} />
+              <>
+                <ReviewDeckCallout result={result} />
+                <FlashcardDeck cards={analysis.flashcards} />
+              </>
             )}
           </div>
         )}
+
+        {activeTab === "related" && <RelatedPapers paper={result.paper} />}
 
         {activeTab === "gaps" && (
           <div className="space-y-8">
@@ -328,7 +409,7 @@ export function ResultsTabs({
                 <div className="aspect-square w-full max-w-[min(100%,320px)]">
                   <ResponsiveContainer width="100%" height="100%">
                     <RadarChart cx="50%" cy="50%" outerRadius="80%" data={scoreData}>
-                      <PolarGrid stroke="rgba(0,0,0,0.08)" />
+                      <PolarGrid stroke="var(--color-border-strong)" />
                       <PolarAngleAxis dataKey="metric" tick={{ fill: "var(--color-carbon-ink)", fontSize: 11, fontWeight: 600 }} />
                       <Radar name="Score" dataKey="value" stroke="var(--color-pumpkin-orange)" fill="var(--color-pumpkin-orange)" fillOpacity={0.25} />
                       <Tooltip />
@@ -346,7 +427,7 @@ export function ResultsTabs({
             {analysis.roadmap.map((node, index) => (
               <div key={index} className="flex gap-4 pb-6 last:pb-0">
                 <div className="flex flex-col items-center">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-carbon-ink)] text-caption font-bold text-white">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-carbon-ink)] text-caption font-bold text-[var(--color-bone-white)]">
                     {index + 1}
                   </div>
                   {index < analysis.roadmap.length - 1 && <div className="mt-2 w-0.5 flex-1 bg-[var(--color-border-strong)]" />}

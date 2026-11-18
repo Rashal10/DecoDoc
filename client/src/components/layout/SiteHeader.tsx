@@ -1,21 +1,24 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useMotionValueEvent, useScroll } from "framer-motion";
-import { Home, Library as LibraryIcon, LogOut, type LucideIcon } from "lucide-react";
+import { Home, Library as LibraryIcon, LogOut, Repeat, Search, type LucideIcon } from "lucide-react";
 import { DecoDocLogo } from "../ui/decodoc-logo";
 import { cn } from "../../lib/utils";
 import { useAuth } from "../../lib/auth-context";
 import { navigateTo, SIGN_IN_PATH, SIGN_UP_PATH } from "../../lib/auth-nav";
-import type { ActivePage } from "../../lib/app-utils";
 import type { UsageStatus } from "../../lib/api";
+import { useDueCount } from "../../lib/review-store";
+import { navigatePage, type AppRoute, type NavPage } from "../../lib/routes";
+import { ThemeToggle } from "./ThemeToggle";
 
-const NAV_ITEMS: { name: string; page: "home" | "library"; icon: LucideIcon }[] = [
+const NAV_ITEMS: { name: string; page: NavPage; icon: LucideIcon }[] = [
   { name: "Home", page: "home", icon: Home },
+  { name: "Search", page: "search", icon: Search },
   { name: "Library", page: "library", icon: LibraryIcon },
+  { name: "Review", page: "review", icon: Repeat },
 ];
 
 export type SiteHeaderProps = {
-  activePage: ActivePage;
-  onNavigate: (page: "home" | "library") => void;
+  activePage: AppRoute["page"];
   usage?: UsageStatus | null;
 };
 
@@ -29,8 +32,9 @@ function UserInitials({ email, name }: { email: string | null; name: string | nu
   return <span className="auth-user-avatar">{initials}</span>;
 }
 
-export function SiteHeader({ activePage, onNavigate, usage }: SiteHeaderProps) {
+export function SiteHeader({ activePage, usage }: SiteHeaderProps) {
   const { isSignedIn, user, logout } = useAuth();
+  const dueCount = useDueCount();
   const { scrollY } = useScroll();
   const [visible, setVisible] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -73,7 +77,7 @@ export function SiteHeader({ activePage, onNavigate, usage }: SiteHeaderProps) {
           <button
             type="button"
             className="site-header-logo rounded-lg border-0 bg-transparent p-0 cursor-pointer"
-            onClick={() => onNavigate("home")}
+            onClick={() => navigatePage("home")}
             aria-label="DecoDoc home"
           >
             <DecoDocLogo monochrome />
@@ -83,23 +87,31 @@ export function SiteHeader({ activePage, onNavigate, usage }: SiteHeaderProps) {
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
               const isActive =
-                activePage === item.page || (item.page === "home" && activePage === "paper-detail");
+                activePage === item.page || (item.page === "library" && activePage === "paper");
+              const badge = item.page === "review" && dueCount > 0 ? dueCount : 0;
               return (
                 <button
                   key={item.page}
                   type="button"
                   className={cn("site-header-nav-item", isActive && "is-active")}
-                  onClick={() => onNavigate(item.page)}
-                  aria-label={item.name}
+                  onClick={() => navigatePage(item.page)}
+                  aria-label={badge ? `${item.name} (${badge} cards due)` : item.name}
+                  aria-current={isActive ? "page" : undefined}
                 >
                   <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
                   <span>{item.name}</span>
+                  {badge ? (
+                    <span className="site-header-badge" aria-hidden>
+                      {badge > 99 ? "99+" : badge}
+                    </span>
+                  ) : null}
                 </button>
               );
             })}
           </nav>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeToggle />
             {usage && !usage.authenticated && (
               <span className="hidden md:inline text-caption text-[var(--color-fossil-gray)]">
                 {usage.remaining === usage.limit
@@ -128,7 +140,7 @@ export function SiteHeader({ activePage, onNavigate, usage }: SiteHeaderProps) {
                 {menuOpen && (
                   <div
                     role="menu"
-                    className="absolute right-0 top-full mt-2 min-w-[10rem] rounded-xl border border-[var(--color-border)] bg-white py-1 shadow-lg z-50"
+                    className="absolute right-0 top-full mt-2 min-w-[10rem] rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-solid)] py-1 shadow-lg z-50"
                   >
                     <button
                       type="button"

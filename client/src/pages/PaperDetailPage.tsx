@@ -1,9 +1,11 @@
-import { Bookmark, ClipboardCopy, Download, Sparkles } from "lucide-react";
-import type { AnalyzeResponse, Paper, StudentMode } from "@decodoc/shared";
+import { useState } from "react";
+import { ArrowLeft, Bookmark, Check, ClipboardCopy, Download, Sparkles } from "lucide-react";
+import type { AnalyzeResponse } from "@decodoc/shared";
 import { HeadlineBanner } from "../components/analysis/AnalysisViews";
 import { DomainBadge } from "../components/paper/DomainBadge";
 import { ResultsTabs } from "../components/paper/ResultsTabs";
 import type { ResultsTab } from "../lib/app-utils";
+import { downloadAnalysisJson, downloadAnalysisMarkdown } from "../lib/export";
 
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
@@ -16,57 +18,52 @@ function Stat({ label, value }: { label: string; value: string | number }) {
 
 export type PaperDetailPageProps = {
   result: AnalyzeResponse;
-  saved: Paper[];
-  activeTab: ResultsTab;
-  onTabChange: (tab: ResultsTab) => void;
-  studentMode: StudentMode;
-  setStudentMode: (mode: StudentMode) => void;
-  scoreData: { metric: string; value: number }[];
-  readingPlan: { title: string; time: string; detail: string }[];
-  eli5Level: number;
-  setEli5Level: (l: number) => void;
+  isBookmarked: boolean;
   onBack: () => void;
-  onCopySummary: () => void;
-  onExportJson: () => void;
-  onExportMd: () => void;
   onToggleBookmark: () => void;
 };
 
-export function PaperDetailPage({
-  result,
-  saved,
-  activeTab,
-  onTabChange,
-  studentMode,
-  setStudentMode,
-  scoreData,
-  readingPlan,
-  eli5Level,
-  setEli5Level,
-  onBack,
-  onCopySummary,
-  onExportJson,
-  onExportMd,
-  onToggleBookmark,
-}: PaperDetailPageProps) {
-  const isBookmarked = saved.some((p) => p.id === result.paper.id);
+export function PaperDetailPage({ result, isBookmarked, onBack, onToggleBookmark }: PaperDetailPageProps) {
+  const [activeTab, setActiveTab] = useState<ResultsTab>("summary");
+  const [copied, setCopied] = useState(false);
+
+  const copySummary = async () => {
+    try {
+      await navigator.clipboard.writeText(result.analysis.tldr);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard blocked (insecure context or denied permission).
+    }
+  };
 
   return (
     <div className="mx-auto flex min-w-0 max-w-6xl flex-col gap-8 px-4 py-12 md:py-20">
       <div className="paper-toolbar">
         <button type="button" className="paper-toolbar-btn" onClick={onBack}>
-          ← Back
+          <ArrowLeft className="h-4 w-4" aria-hidden />
+          <span>Library</span>
         </button>
         <div className="paper-toolbar-actions">
-          <button type="button" className="paper-toolbar-btn" onClick={onCopySummary} aria-label="Copy summary">
-            <ClipboardCopy className="h-4 w-4" aria-hidden />
-            <span>Copy</span>
+          <button type="button" className="paper-toolbar-btn" onClick={() => void copySummary()} aria-label="Copy TL;DR">
+            {copied ? <Check className="h-4 w-4" aria-hidden /> : <ClipboardCopy className="h-4 w-4" aria-hidden />}
+            <span>{copied ? "Copied" : "Copy"}</span>
           </button>
-          <button type="button" className="paper-toolbar-btn" onClick={onExportJson} aria-label="Export JSON">
+          <button
+            type="button"
+            className="paper-toolbar-btn"
+            onClick={() => downloadAnalysisJson(result)}
+            aria-label="Export JSON"
+          >
             <Download className="h-4 w-4" aria-hidden />
             <span>JSON</span>
           </button>
-          <button type="button" className="paper-toolbar-btn" onClick={onExportMd} aria-label="Export Markdown">
+          <button
+            type="button"
+            className="paper-toolbar-btn"
+            onClick={() => downloadAnalysisMarkdown(result)}
+            aria-label="Export Markdown"
+          >
             <Download className="h-4 w-4" aria-hidden />
             <span>Markdown</span>
           </button>
@@ -75,6 +72,7 @@ export function PaperDetailPage({
             className={`paper-toolbar-btn ${isBookmarked ? "is-active" : ""}`}
             onClick={onToggleBookmark}
             aria-label={isBookmarked ? "Remove bookmark" : "Bookmark paper"}
+            aria-pressed={isBookmarked}
           >
             <Bookmark className={`h-4 w-4 ${isBookmarked ? "fill-current" : ""}`} aria-hidden />
             <span>{isBookmarked ? "Saved" : "Save"}</span>
@@ -117,17 +115,7 @@ export function PaperDetailPage({
         </div>
       </div>
 
-      <ResultsTabs
-        result={result}
-        activeTab={activeTab}
-        onTabChange={onTabChange}
-        studentMode={studentMode}
-        setStudentMode={setStudentMode}
-        scoreData={scoreData}
-        readingPlan={readingPlan}
-        eli5Level={eli5Level}
-        setEli5Level={setEli5Level}
-      />
+      <ResultsTabs result={result} activeTab={activeTab} onTabChange={setActiveTab} />
     </div>
   );
 }

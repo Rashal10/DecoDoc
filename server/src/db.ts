@@ -1,4 +1,4 @@
-import { and, count, eq, gte, inArray, isNotNull, or, sql } from "drizzle-orm";
+import { and, count, eq, gte, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import type { Analysis, Paper } from "@decodoc/shared";
 import { parseCachedAnalysis } from "./analysisCache";
 import { EMBEDDING_DIMENSIONS, toVectorLiteral } from "./embedding";
@@ -11,6 +11,7 @@ import {
   analysisUsage,
   anonymousSessions,
   papers,
+  passwordResetTokens,
   userBookmarks,
   users,
 } from "./schema";
@@ -769,4 +770,39 @@ export async function syncBookmarks(userId: string, paperIds: string[]): Promise
       .onConflictDoNothing();
   }
   return getUserBookmarks(userId);
+}
+
+export async function createPasswordResetToken(userId: string, tokenHash: string, expiresAt: Date): Promise<void> {
+  const db = getDb();
+  await db
+    .delete(passwordResetTokens)
+    .where(and(eq(passwordResetTokens.userId, userId), isNull(passwordResetTokens.usedAt)));
+  await db.insert(passwordResetTokens).values({ userId, tokenHash, expiresAt });
+}
+
+export async function findPasswordResetToken(tokenHash: string) {
+  const rows = await getDb()
+    .select()
+    .from(passwordResetTokens)
+    .where(eq(passwordResetTokens.tokenHash, tokenHash))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+/**
+ * Marks the token used and sets the new password in one transaction.
+ * Returns the updated user, or null when the token was already consumed.
+ */
+export async function consumePasswordResetToken(tokenId: string, userId: string, passwordHash: string) {
+  return getDb().transaction(async (tx) => {
+    const claimed = await tx
+      .update(passwordResetTokens)
+      .set({ usedAt: new Date() })
+      .where(and(eq(passwordResetTokens.id, tokenId), isNull(passwordResetTokens.usedAt)))
+      .returning({ id: passwordResetTokens.id });
+    if (claimed.length === 0) return null;
+    const [user] = await tx.update(users).set({ passwordHash }).where(eq(users.id, userId)).returning();
+    await tx.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, userId));
+    return user ?? null;
+  });
 }

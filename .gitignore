@@ -44,3 +44,12 @@ task.md
 command_run_results_and_history/
 dump_dom_structure.js
 .antigravityignore
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Local scratch exports and decks (kept on disk, not in the repo)
+analyze-*-output.json
+arxiv-*-raw.xml
+*.pptx

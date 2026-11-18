@@ -196,7 +196,7 @@ export function AnalyzePanel({
                   <button
                     key={id}
                     type="button"
-                    className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-caption font-semibold transition-colors hover:border-[var(--color-signal-blue)] hover:text-[var(--color-signal-blue)]"
+                    className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-solid)] px-3 py-1.5 text-caption font-semibold transition-colors hover:border-[var(--color-signal-blue)] hover:text-[var(--color-signal-blue)]"
                     onClick={() => {
                       setMode("arxiv");
                       setValue(id);
@@ -215,7 +215,7 @@ export function AnalyzePanel({
             id="analyze-error"
             role="alert"
             aria-live="polite"
-            className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-body font-medium text-red-700"
+            className="mt-6 rounded-xl border border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300 px-4 py-3 text-body font-medium text-red-700"
           >
             {error}
           </div>

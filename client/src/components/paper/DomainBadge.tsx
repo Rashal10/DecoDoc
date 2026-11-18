@@ -26,7 +26,7 @@ export function DomainBadge({ title, abstract }: { title: string; abstract?: str
   const Icon = config.icon;
 
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-carbon-ink)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-white">
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-carbon-ink)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-bone-white)]">
       <Icon className="h-3.5 w-3.5" aria-hidden />
       {config.label}
     </span>

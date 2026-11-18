@@ -190,7 +190,7 @@ router.get("/similar/:id", async (req, res, next) => {
     if (paper.visibility === "private") return res.json({ related: [] });
     const stored = await getPaperEmbedding(paper.id);
     const embedding = stored ?? (await embedText(`${paper.title}\n${paper.abstract}`.slice(0, 8_000)));
-    const related = toRelated(await nearestPublicPapers(embedding, 8, paper.id));
+    const related = toRelated(await nearestPublicPapers(embedding, 8, paper.id), paper.year);
     res.json({ related });
   } catch (error) {
     next(error);

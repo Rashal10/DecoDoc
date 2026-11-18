@@ -222,15 +222,23 @@ export const api = {
         })
     );
   },
-  search(q: string) {
-    beginAnalysisSession(45_000);
-    return request<{ results: SearchResult[] }>(`/api/search?q=${encodeURIComponent(q)}`).finally(endAnalysisSession);
+  /** Semantic search over public analyzed papers. Independent of any running analysis. */
+  search(q: string, signal?: AbortSignal) {
+    return request<{ results: SearchResult[] }>(
+      `/api/search?q=${encodeURIComponent(q)}`,
+      { method: "GET", signal },
+      { useActiveSignal: false }
+    );
   },
   paper(id: string) {
     return request<{ paper: Paper; analysis: Analysis | null }>(`/api/paper/${encodeURIComponent(id)}`);
   },
-  similar(id: string) {
-    return request<{ related: RelatedPaper[] }>(`/api/similar/${encodeURIComponent(id)}`);
+  similar(id: string, signal?: AbortSignal) {
+    return request<{ related: RelatedPaper[] }>(
+      `/api/similar/${encodeURIComponent(id)}`,
+      { method: "GET", signal },
+      { useActiveSignal: false }
+    );
   },
   getBookmarks() {
     return request<{ bookmarks: Paper[] }>("/api/library/bookmarks", { method: "GET" }, { useActiveSignal: false });

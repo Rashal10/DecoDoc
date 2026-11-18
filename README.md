@@ -35,6 +35,10 @@ LLM_PROVIDER=groq
 LLM_MODEL=llama-3.3-70b-versatile
 DATABASE_URL=postgresql://decodoc:decodoc@localhost:5432/decodoc
 AUTH_JWT_SECRET=change-this-to-a-long-random-string-in-production
+# Optional: password reset emails via Resend. Without these, dev servers print
+# the reset link to the server log.
+RESEND_API_KEY=
+MAIL_FROM=DecoDoc <no-reply@your-domain.com>
 ```
 
 Start Postgres locally (Docker):
@@ -72,6 +76,10 @@ Never commit `.env` or real API keys.
 | `POST /api/auth/logout` | — | Clear auth cookie |
 | `GET /api/auth/me` | Cookie | Current user |
 | `GET /api/auth/google` | — | Start Google OAuth |
+| `POST /api/auth/forgot-password` | — | Email a password reset link (same reply whether or not the account exists) |
+| `POST /api/auth/reset-password` | — | Set a new password with a reset token and sign in |
+| `GET /api/search?q=` | — | Semantic search over public analyzed papers |
+| `GET /api/similar/:id` | — | Related public papers for a paper |
 
 Anonymous users get 3 free analyses; signed-in users get 10 per day. Pasted abstracts and uploaded PDFs stay private to that account or browser session. arXiv and DOI papers are shared. A repeated analysis of the same public paper reuses the saved result.
 

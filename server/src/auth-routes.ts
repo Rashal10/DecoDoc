@@ -3,7 +3,10 @@ import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { config } from "./config";
 import {
+  consumePasswordResetToken,
   createEmailUser,
+  createPasswordResetToken,
+  findPasswordResetToken,
   findUserByEmailAddress,
   getUserByEmail,
   getUserById,
@@ -16,7 +19,16 @@ import {
   clearAuthCookieOptions,
   signAuthToken,
 } from "./jwt-auth";
+import { passwordResetEmail, sendEmail } from "./mailer";
 import { hashPassword, verifyPassword } from "./password";
+import {
+  generateResetToken,
+  hashResetToken,
+  isResetTokenUsable,
+  looksLikeResetToken,
+  resetPasswordLink,
+  resetTokenExpiry,
+} from "./passwordReset";
 
 const OAUTH_STATE_COOKIE = "decodoc_oauth_state";
 
@@ -30,6 +42,17 @@ const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address."),
   password: z.string().min(1, "Please enter your password."),
 });
+
+const forgotPasswordSchema = z.object({
+  email: z.string().trim().email("Please enter a valid email address."),
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(1, "This reset link is invalid."),
+  password: z.string().min(8, "Password must be at least 8 characters.").max(200),
+});
+
+const RESET_LINK_INVALID = "This reset link is invalid or has expired. Request a new one.";
 
 export const authRouter = Router();
 
@@ -121,6 +144,63 @@ authRouter.post("/login", async (req, res, next) => {
         error: "INVALID_CREDENTIALS",
         message: "Incorrect email or password.",
       });
+    }
+
+    await setAuthCookie(res, user);
+    res.json(publicUser(user));
+  } catch (error) {
+    next(error);
+  }
+});
+
+authRouter.post("/forgot-password", async (req, res, next) => {
+  try {
+    const parsed = forgotPasswordSchema.safeParse(req.body);
+    if (!parsed.success) {
+      const message = parsed.error.errors[0]?.message ?? "Please enter a valid email address.";
+      return res.status(400).json({ error: "VALIDATION_ERROR", message });
+    }
+
+    // Same response whether or not the account exists, so emails can't be probed.
+    const user = await getUserByEmail(parsed.data.email);
+    if (user?.email) {
+      const token = generateResetToken();
+      await createPasswordResetToken(user.id, hashResetToken(token), resetTokenExpiry());
+      // Not awaited: the reply time shouldn't depend on the mail provider.
+      void sendEmail(passwordResetEmail(user.email, resetPasswordLink(config.clientOrigin, token))).catch(
+        (error: unknown) => {
+          console.error("[DecoDoc Auth] Could not send the password reset email:", error);
+        }
+      );
+    }
+
+    res.json({ ok: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+authRouter.post("/reset-password", async (req, res, next) => {
+  try {
+    const parsed = resetPasswordSchema.safeParse(req.body);
+    if (!parsed.success) {
+      const message = parsed.error.errors[0]?.message ?? "Invalid reset details.";
+      return res.status(400).json({ error: "VALIDATION_ERROR", message });
+    }
+
+    const { token, password } = parsed.data;
+    if (!looksLikeResetToken(token)) {
+      return res.status(400).json({ error: "RESET_TOKEN_INVALID", message: RESET_LINK_INVALID });
+    }
+
+    const record = await findPasswordResetToken(hashResetToken(token));
+    if (!record || !isResetTokenUsable(record)) {
+      return res.status(400).json({ error: "RESET_TOKEN_INVALID", message: RESET_LINK_INVALID });
+    }
+
+    const user = await consumePasswordResetToken(record.id, record.userId, await hashPassword(password));
+    if (!user) {
+      return res.status(400).json({ error: "RESET_TOKEN_INVALID", message: RESET_LINK_INVALID });
     }
 
     await setAuthCookie(res, user);

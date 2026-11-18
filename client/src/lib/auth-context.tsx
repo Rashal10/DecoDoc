@@ -28,6 +28,8 @@ type AuthContextValue = {
   register: (email: string, password: string, displayName?: string) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<void>;
+  resetPassword: (token: string, password: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -100,6 +102,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  const requestPasswordReset = useCallback(async (email: string) => {
+    const res = await fetch(apiUrl("/api/auth/forgot-password"), {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    if (!res.ok) await parseAuthError(res);
+  }, []);
+
+  const resetPassword = useCallback(async (token: string, password: string) => {
+    const res = await fetch(apiUrl("/api/auth/reset-password"), {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, password }),
+    });
+    if (!res.ok) await parseAuthError(res);
+    setUser((await res.json()) as AuthUser);
+  }, []);
+
   const logout = useCallback(async () => {
     await fetch(apiUrl("/api/auth/logout"), { method: "POST", credentials: "include" });
     setUser(null);
@@ -115,8 +138,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       register,
       logout,
       refresh,
+      requestPasswordReset,
+      resetPassword,
     }),
-    [user, loading, googleEnabled, login, register, logout, refresh]
+    [user, loading, googleEnabled, login, register, logout, refresh, requestPasswordReset, resetPassword]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

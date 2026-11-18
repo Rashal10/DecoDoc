@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { apiUrl } from "../../lib/api-base";
 import { useAuth } from "../../lib/auth-context";
-import { navigateTo, SIGN_IN_PATH, SIGN_UP_PATH } from "../../lib/auth-nav";
+import { FORGOT_PASSWORD_PATH, navigateTo, SIGN_IN_PATH, SIGN_UP_PATH } from "../../lib/auth-nav";
 
 type EmailAuthFormProps = {
   mode: "sign-in" | "sign-up";
@@ -110,7 +110,7 @@ export function EmailAuthForm({ mode, onSuccess, compact }: EmailAuthFormProps) 
       {(error || urlError) && (
         <div
           role="alert"
-          className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700"
+          className="mb-4 rounded-xl border border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300 px-4 py-3 text-sm font-medium text-red-700"
         >
           {error || urlError}
         </div>
@@ -187,6 +187,16 @@ export function EmailAuthForm({ mode, onSuccess, compact }: EmailAuthFormProps) 
               required
             />
           </label>
+        )}
+
+        {!isSignUp && (
+          <button
+            type="button"
+            className="auth-link -mt-2 self-end text-sm"
+            onClick={() => navigateTo(FORGOT_PASSWORD_PATH)}
+          >
+            Forgot password?
+          </button>
         )}
 
         <button type="submit" className="btn-primary w-full mt-1" disabled={busy}>

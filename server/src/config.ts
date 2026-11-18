@@ -36,6 +36,8 @@ export const config = {
   googleClientId: process.env.GOOGLE_CLIENT_ID ?? "",
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
   apiPublicUrl: process.env.API_PUBLIC_URL ?? `http://localhost:${Number(process.env.PORT ?? 8787)}`,
+  resendApiKey: process.env.RESEND_API_KEY ?? "",
+  mailFrom: process.env.MAIL_FROM ?? "",
 };
 
 const DEV_JWT_SECRET = "dev-only-change-me-in-production";
@@ -58,6 +60,10 @@ export function validateProductionConfig(): void {
 
   if (!config.geminiApiKey) {
     console.warn("[DecoDoc] GEMINI_API_KEY is not set — embeddings and semantic search will fail.");
+  }
+
+  if (!config.resendApiKey || !config.mailFrom) {
+    console.warn("[DecoDoc] RESEND_API_KEY / MAIL_FROM are not set. Password reset emails will not be sent.");
   }
 }
 

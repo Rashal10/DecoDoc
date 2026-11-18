@@ -38,16 +38,7 @@ export function paperIdFromPath(pathname: string): string | null {
   }
 }
 
-export function rememberPaperPath(id: string) {
-  const path = paperPath(id);
-  if (window.location.pathname === path) return;
-  window.history.pushState({ paperId: id }, "", path);
-}
-
-export function rememberAppPath() {
-  if (!paperIdFromPath(window.location.pathname)) return;
-  window.history.pushState({}, "", "/");
-}
-
 export const SIGN_IN_PATH = "/sign-in";
 export const SIGN_UP_PATH = "/sign-up";
+export const FORGOT_PASSWORD_PATH = "/forgot-password";
+export const RESET_PASSWORD_PATH = "/reset-password";

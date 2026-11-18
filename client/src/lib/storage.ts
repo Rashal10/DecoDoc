@@ -6,11 +6,12 @@ import { api } from "./api";
 const RECENTS = "decodoc:recents";
 const SAVED = "decodoc:saved";
 const NOTES = "decodoc:notes";
+const MAX_RECENTS = 50;
 
 export async function saveRecent(response: AnalyzeResponse) {
   const recents = await get<AnalyzeResponse[]>(RECENTS).then((v) => v ?? []);
   const exportable = toAnalysisExport(response);
-  await set(RECENTS, [exportable, ...recents.filter((item) => item.paper.id !== response.paper.id)].slice(0, 10));
+  await set(RECENTS, [exportable, ...recents.filter((item) => item.paper.id !== response.paper.id)].slice(0, MAX_RECENTS));
 }
 
 export async function getRecents() {

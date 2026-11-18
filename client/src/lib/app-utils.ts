@@ -20,7 +20,6 @@ export const LOADING_MESSAGES = [
 export const EXAMPLE_PAPERS = EXAMPLE_ARXIV_PAPERS.map((paper) => [paper.arxivId, paper.label] as const);
 
 export type InputMode = "arxiv" | "doi" | "abstract" | "pdf";
-export type ActivePage = "home" | "library" | "paper-detail";
 export type BusyStage = "idle" | "fetching" | "embedding" | "analyzing" | "saving" | "extracting";
 export type ResultsTab =
   | "summary"
@@ -32,6 +31,7 @@ export type ResultsTab =
   | "flashcards"
   | "gaps"
   | "citations"
+  | "related"
   | "eli5";
 
 export function slugify(text: string): string {
@@ -94,4 +94,10 @@ export function samePaper(a: Paper, b: Paper): boolean {
   if (aArxiv && bArxiv && aArxiv === bArxiv) return true;
   if (a.doi && b.doi && a.doi.toLowerCase() === b.doi.toLowerCase()) return true;
   return false;
+}
+
+/** Cosine similarity (0 to 1) shown as a whole-number percentage. */
+export function matchPercent(score: number): number {
+  if (!Number.isFinite(score)) return 0;
+  return Math.max(0, Math.min(100, Math.round(score * 100)));
 }

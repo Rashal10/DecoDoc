@@ -91,16 +91,16 @@ export function HeadlineBanner({ headline }: { headline: string }) {
 
 export function VerdictBadge({ lead }: { lead: string }) {
   const upper = lead.toUpperCase();
-  let color = "bg-neutral-100 text-neutral-700";
+  let color = "bg-[var(--color-track)] text-[var(--color-carbon-ink)]";
   let label = "REVIEW";
   if (upper.startsWith("READ NOW")) {
-    color = "bg-emerald-50 text-emerald-700 border-emerald-200";
+    color = "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900";
     label = "READ NOW";
   } else if (upper.startsWith("SKIM")) {
-    color = "bg-amber-50 text-amber-700 border-amber-200";
+    color = "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900";
     label = "SKIM";
   } else if (upper.startsWith("SKIP")) {
-    color = "bg-red-50 text-red-700 border-red-200";
+    color = "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900";
     label = "SKIP";
   }
   return (
@@ -112,14 +112,14 @@ export function VerdictBadge({ lead }: { lead: string }) {
 
 export function HypeClaimCard({ claim, index = 0 }: { claim: HypeClaim; index?: number }) {
   const levelStyles: Record<HypeLevel, string> = {
-    HIGH: "text-red-600 bg-red-50 border-red-100",
-    MODERATE: "text-amber-600 bg-amber-50 border-amber-100",
-    LOW: "text-emerald-600 bg-emerald-50 border-emerald-100"
+    HIGH: "text-red-600 bg-red-50 border-red-100 dark:text-red-300 dark:bg-red-950/40 dark:border-red-900",
+    MODERATE: "text-amber-600 bg-amber-50 border-amber-100 dark:text-amber-300 dark:bg-amber-950/40 dark:border-amber-900",
+    LOW: "text-emerald-600 bg-emerald-50 border-emerald-100 dark:text-emerald-300 dark:bg-emerald-950/40 dark:border-emerald-900"
   };
   const style = levelStyles[claim.hypeLevel] ?? levelStyles.MODERATE;
 
   return (
-    <div className="border border-[var(--color-carbon-ink)]/10 rounded-xl p-4 bg-white/50 hover:shadow-sm transition-shadow">
+    <div className="border border-[var(--color-carbon-ink)]/10 rounded-xl p-4 bg-[var(--color-surface)] hover:shadow-sm transition-shadow">
       <div className="flex justify-between items-start gap-3 mb-2">
         <span className="font-bold text-body leading-snug">{claim.claim}</span>
         <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded shrink-0 border ${style}`}>
@@ -150,7 +150,7 @@ export function GenealogyCard({
         <span className="font-bold text-body">{entry.title}</span>
         <span className={`text-caption font-bold ${yearColor}`}>({entry.year})</span>
         {entry.confidence === "inferred" && (
-          <span className="text-[9px] uppercase font-bold text-[var(--color-fossil-gray)] bg-neutral-100 px-1.5 py-0.5 rounded">
+          <span className="text-[9px] uppercase font-bold text-[var(--color-fossil-gray)] bg-[var(--color-track)] px-1.5 py-0.5 rounded">
             inferred
           </span>
         )}
@@ -259,10 +259,10 @@ export function InterviewAccordion({ items }: { items: InterviewQA[] }) {
       {items.map((qa, index) => {
         const isOpen = openIndex === index;
         return (
-          <div key={index} className="overflow-hidden rounded-2xl border border-[var(--color-carbon-ink)]/10 bg-white/50 backdrop-blur-sm">
+          <div key={index} className="overflow-hidden rounded-2xl border border-[var(--color-carbon-ink)]/10 bg-[var(--color-surface)] backdrop-blur-sm">
             <button
               type="button"
-              className="w-full flex items-start justify-between gap-4 p-5 text-left transition-colors hover:bg-white/70"
+              className="w-full flex items-start justify-between gap-4 p-5 text-left transition-colors hover:bg-[var(--color-surface-solid)]"
               onClick={() => setOpenIndex(isOpen ? null : index)}
               aria-expanded={isOpen}
             >

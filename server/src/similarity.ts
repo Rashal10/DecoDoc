@@ -34,19 +34,36 @@ function publicPaper(row: Paper & { embedding?: number[] }): Paper {
   return paper;
 }
 
+function abstractSnippet(abstract: string, max = 220): string {
+  const clean = abstract.replace(/\s+/g, " ").trim();
+  if (clean.length <= max) return clean;
+  const cut = clean.slice(0, max);
+  const lastSpace = cut.lastIndexOf(" ");
+  return `${(lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).trim()}…`;
+}
+
 export function toSearchResults(rows: Array<Paper & { score: number; embedding?: number[] }>): SearchResult[] {
   return rows.map(({ score, ...paper }) => ({
     paper: publicPaper(paper),
     score,
-    highlights: [paper.abstract.slice(0, 180)]
+    highlights: [abstractSnippet(paper.abstract)],
   }));
 }
 
-export function toRelated(rows: Array<Paper & { score: number; embedding?: number[] }>): RelatedPaper[] {
-  return rows.map(({ score, ...paper }, index) => ({
+/** Older related papers are likely foundations, newer ones follow-ups; same-year ones are peers. */
+export function relationKind(sourceYear: number | undefined, otherYear: number | undefined): RelatedPaper["kind"] {
+  if (!sourceYear || !otherYear || otherYear === sourceYear) return "similar";
+  return otherYear < sourceYear ? "foundational" : "follow-up";
+}
+
+export function toRelated(
+  rows: Array<Paper & { score: number; embedding?: number[] }>,
+  sourceYear?: number
+): RelatedPaper[] {
+  return rows.map(({ score, ...paper }) => ({
     paper: publicPaper(paper),
     score,
-    reason: score > 0.82 ? "Strong embedding overlap in methods and concepts." : "Shares topic-level semantic structure.",
-    kind: index === 0 ? "similar" : index % 3 === 0 ? "foundational" : "follow-up"
+    reason: score > 0.82 ? "Strong overlap in methods and concepts." : "Covers a closely related topic.",
+    kind: relationKind(sourceYear, paper.year),
   }));
 }
