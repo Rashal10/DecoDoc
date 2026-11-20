@@ -26,7 +26,7 @@ export function PaperCard({ paper, onOpen }: PaperCardProps) {
       onKeyDown={handleKeyDown}
       aria-label={`Open paper: ${paper.title}`}
     >
-      <h3 className="text-body-lg font-semibold mb-2 line-clamp-2">{paper.title}</h3>
+      <h3 className="text-body-lg font-semibold mb-2 line-clamp-2 [overflow-wrap:anywhere]">{paper.title}</h3>
       <p className="text-caption text-[var(--color-fossil-gray)] mb-3 line-clamp-2">
         {paper.authors.join(", ")}
       </p>

@@ -246,7 +246,7 @@
     #0b0a09;
   color: #f7f3f1;
 }
-.auth2-mobile-banner p { margin: 0; font-size: 1.35rem; font-weight: 600; letter-spacing: -0.03em; line-height: 1.15; }
+.auth2-mobile-banner p { margin: 0; font-size: 1.35rem; font-weight: 600; letter-spacing: -0.03em; line-height: var(--leading-heading); }
 .auth2-mobile-banner span { font-family: var(--font-copernicus); font-style: italic; font-weight: 500; color: #ffb380; }
 
 .auth2-main {
@@ -272,7 +272,7 @@
   margin: 0;
   font-size: clamp(2.25rem, 3vw + 1rem, 3rem);
   font-weight: 600;
-  line-height: 1.02;
+  line-height: var(--leading-heading);
   letter-spacing: -0.045em;
 }
 .auth2-title em {
@@ -459,8 +459,6 @@
 .auth2-link--small { font-size: 12.5px; }
 
 .auth2-footer { margin-top: 1.75rem; text-align: center; font-size: 14px; color: var(--color-fossil-gray); }
-.auth2-legal { margin: 0; padding: 0 1.5rem 1.25rem; font-size: 12px; color: var(--color-fossil-gray); }
-@media (min-width: 768px) { .auth2-legal { padding: 0 2.5rem 1.5rem; } }
 
 .auth2-back:focus-visible,
 .auth2-link:focus-visible,
@@ -478,7 +476,9 @@
   top: 0;
   display: flex;
   flex: 1 1 48%;
-  height: 100dvh;
+  align-self: flex-start;
+  min-width: 0;
+  min-height: 100dvh;
   padding: 0.75rem;
 }
 
@@ -529,7 +529,7 @@
   margin: 0;
   font-size: clamp(2rem, 2.6vw + 0.8rem, 3.25rem);
   font-weight: 600;
-  line-height: 1.02;
+  line-height: var(--leading-heading);
   letter-spacing: -0.045em;
 }
 .auth-showcase-title span {
@@ -569,7 +569,7 @@
   animation: authDemoIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .auth-demo-paper .auth-demo-kicker { color: #c24e00; }
-.auth-demo-paper-title { margin: 0; font-family: var(--font-copernicus); font-size: 1.05rem; font-weight: 600; line-height: 1.2; }
+.auth-demo-paper-title { margin: 0; font-family: var(--font-copernicus); font-size: 1.05rem; font-weight: 600; line-height: var(--leading-heading); }
 .auth-demo-byline { margin: 0.35rem 0 1rem; font-size: 11.5px; color: #6b6f76; }
 .auth-demo-lines { display: flex; flex-direction: column; gap: 0.45rem; }
 .auth-demo-lines span { display: block; height: 6px; border-radius: 9999px; background: rgba(10, 10, 10, 0.1); }

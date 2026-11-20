@@ -46,8 +46,6 @@ export function AuthLayout({ eyebrow, title, subtitle, children, footer }: AuthL
             {footer ? <div className="auth2-footer animate-element animate-delay-400">{footer}</div> : null}
           </div>
         </main>
-
-        <p className="auth2-legal">© {new Date().getFullYear()} DecoDoc</p>
       </section>
 
       <aside className="auth2-showcase-col" aria-label="What DecoDoc does">

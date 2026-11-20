@@ -260,7 +260,7 @@ button, input, textarea { font: inherit; }
   font-weight: 600;
 }
 
-.text-heading { font-size: var(--text-heading); line-height: var(--leading-heading); letter-spacing: var(--tracking-heading); }
+.text-heading { font-size: var(--text-heading); line-height: var(--leading-heading); letter-spacing: var(--tracking-heading); overflow-wrap: anywhere; }
 .text-heading-xl { font-size: var(--text-heading-xl); line-height: var(--leading-heading-xl); letter-spacing: var(--tracking-heading-xl); }
 .text-subheading { font-size: var(--text-subheading); line-height: var(--leading-subheading); letter-spacing: var(--tracking-subheading); }
 .text-body-lg { font-size: var(--text-body-lg); line-height: var(--leading-body-lg); letter-spacing: var(--tracking-body-lg); }
@@ -275,7 +275,7 @@ button, input, textarea { font: inherit; }
 
 .hero-quote {
   font-size: clamp(2.25rem, 3.2vw + 1.2rem, 4.5rem);
-  line-height: 1.08;
+  line-height: var(--leading-heading);
   letter-spacing: -0.035em;
   font-weight: 500;
   text-wrap: balance;

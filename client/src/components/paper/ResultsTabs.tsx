@@ -198,7 +198,7 @@ export function ResultsTabs({ result, activeTab, onTabChange }: ResultsTabsProps
             <div className="border-t border-[var(--color-border)] pt-6">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <h3 className="text-subheading font-semibold">For Students</h3>
-                <div className="flex gap-2" role="group" aria-label="Student level">
+                <div className="flex flex-wrap gap-2" role="group" aria-label="Student level">
                   {(["beginner", "intermediate", "research"] as StudentMode[]).map((mode) => (
                     <button
                       key={mode}

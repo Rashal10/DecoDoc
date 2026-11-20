@@ -5,7 +5,6 @@ import { navigatePage } from "../../lib/routes";
 const WORDMARK = ["D", "e", "c", "o", "D", "o", "c"];
 
 export function SiteFooter() {
-  const year = new Date().getFullYear();
   const footerRef = useRef<HTMLElement>(null);
   const wordmarkRef = useRef<HTMLDivElement>(null);
   const [revealed, setRevealed] = useState(false);
@@ -84,7 +83,6 @@ export function SiteFooter() {
         </div>
 
         <div className="site-footer-bar">
-          <span>© {year} DecoDoc</span>
           <span className="site-footer-credit">
             Made by <span className="site-footer-credit-name">Rashal</span>
           </span>
